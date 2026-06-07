@@ -148,3 +148,20 @@
 .coming p{font-weight:400;font-size:21px;color:var(--txt-4);margin-top:12px;max-width:440px;line-height:1.5}
 .coming .soon{display:inline-block;margin-top:24px;font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:.3em;
   color:var(--gold);border:1px solid rgba(232,207,142,.35);border-radius:30px;padding:9px 22px}
+
+/* ========== MINIGAME MODAL ========== */
+.mgm-layer{position:fixed;inset:0;z-index:100;background:rgba(4,6,12,.78);backdrop-filter:blur(6px);
+  display:grid;place-items:center;animation:mgmIn .2s ease}
+@keyframes mgmIn{from{opacity:0}to{opacity:1}}
+.mgm-panel{width:480px;border:1px solid var(--line-strong);border-radius:16px;background:var(--bg-1);
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+  animation:mgmSlide .25s cubic-bezier(.22,.61,.36,1)}
+@keyframes mgmSlide{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.mgm-close{position:absolute;top:14px;right:14px;z-index:5;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.5);color:var(--txt-2);
+  cursor:pointer;display:grid;place-items:center;transition:all .15s}
+.mgm-close:hover{background:rgba(0,0,0,.8);color:#fff}
+.mgm-panel .mg-detail{border:none;border-radius:0;background:transparent;flex:1}
+.mgm-panel .dt-art{height:200px}
+.mgm-panel .dt-body{padding:24px 28px 28px}
+.mgm-panel .mg-detail .btn-play{width:100%;justify-content:center}
