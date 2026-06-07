@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 
-import { Crest, FlagSvg, Icon } from "@/components/svg";
+import { FlagSvg, Icon } from "@/components/svg";
+import { AvatarArt, ShieldArt } from "@/components/game-art";
+import { useProfile } from "@/components/ProfileContext";
 import { useOverlay } from "@/components/overlay-context";
 import { currentLeagueInfo } from "@/data/leagues";
-import { PROFILE } from "@/data/profile";
 
 const ChevronIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -17,6 +18,7 @@ const ChevronIcon = () => (
 export default function LigaPage() {
   const { openLobby } = useOverlay();
   const { league } = currentLeagueInfo();
+  const profile = useProfile();
 
   return (
     <div className="liga">
@@ -41,8 +43,7 @@ export default function LigaPage() {
 
         <div className="liga-hero">
           <div className="liga-avatar">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={PROFILE.avatar} alt="avatar" />
+            <AvatarArt id={profile.avatarId} />
           </div>
           <div className="liga-copy">
             <h2>
@@ -59,24 +60,30 @@ export default function LigaPage() {
 
         <div className="liga-row">
           <div className="user-card">
-            <div className="ua">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={PROFILE.avatar} alt={PROFILE.name} />
+            <div className="ua liga-ua">
+              <AvatarArt id={profile.avatarId} />
             </div>
             <div className="ud">
-              <div className="un">{PROFILE.name.toUpperCase()}</div>
+              <div className="un">{profile.presidentName.toUpperCase()}</div>
               <div className="um">
-                <span className="bit">
-                  <span className="fl">
-                    <FlagSvg code={PROFILE.countryFlag} />
-                  </span>{" "}
-                  {PROFILE.country}
-                </span>
-                <span className="sep" />
-                <span className="bit">
-                  <Crest id={PROFILE.clubCrest} className="cr crest cl" style={{ width: 22, height: 22 }} />{" "}
-                  {PROFILE.club}
-                </span>
+                {profile.country && (
+                  <span className="bit">
+                    <span className="fl">
+                      <FlagSvg code={profile.country} />
+                    </span>{" "}
+                    {profile.countryName}
+                  </span>
+                )}
+                {profile.shieldId && (
+                  <>
+                    <span className="sep" />
+                    <span className="bit">
+                      <span className="cr" style={{ width: 22, height: 22, display: "inline-flex" }}>
+                        <ShieldArt id={profile.shieldId} />
+                      </span>
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -8,9 +8,8 @@ import "@/styles/home2.css";
 import "@/styles/ligas.css";
 import "@/styles/lobby.css";
 import "@/styles/game.css";
-
-import { SvgSymbols } from "@/components/SvgSymbols";
-import { GameShell } from "@/components/GameShell";
+import "@/styles/auth.css";
+import "@/styles/profile-setup.css";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
@@ -37,8 +36,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${barlowCondensed.variable} ${barlowSemi.variable}`}>
       <body>
-        <SvgSymbols />
-        <GameShell>{children}</GameShell>
+        {children}
       </body>
     </html>
   );

@@ -115,7 +115,7 @@ table.tm-tbl{width:100%;border-collapse:collapse}
 .club-pres{display:flex;align-items:center;gap:9px;font-weight:400;font-size:19px;color:var(--txt-2);margin-top:8px}
 .club-pres b{color:#fff;font-weight:600}
 .club-pres .ua{width:30px;height:30px;border-radius:50%;overflow:hidden;border:1.5px solid var(--gold);background:#1a2030;flex:0 0 auto}
-.club-pres .ua img{width:150%;height:150%;object-fit:cover;object-position:50% 12%;transform:translate(-16%,0)}
+.club-pres .ua svg{width:100%;height:100%;display:block}
 .club-pres .fl{width:22px;height:15px;border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,.14)}
 .club-pres .fl svg{display:block;width:100%;height:100%}
 .club-kpis{display:flex;gap:14px}

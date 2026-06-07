@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 
-import { CrestSvg, FlagSvg, Sym } from "@/components/svg";
-import { PROFILE } from "@/data/profile";
+import { FlagSvg, Sym } from "@/components/svg";
+import { AvatarArt, ShieldArt } from "@/components/game-art";
+import { useProfile } from "@/components/ProfileContext";
 import {
   CLUB_KPIS,
   HISTORY,
@@ -17,6 +18,7 @@ type Filter = "todos" | HistoryCategory;
 /** Mi Club view — club identity, KPIs and a filterable results history. */
 export default function ClubPage() {
   const [filter, setFilter] = useState<Filter>("todos");
+  const profile = useProfile();
   const list = HISTORY.filter((h) => filter === "todos" || h.cat === filter);
 
   return (
@@ -24,20 +26,24 @@ export default function ClubPage() {
       <div className="club-head">
         <div className="club-id">
           <span className="club-crest">
-            <CrestSvg id="crest-rma" />
+            <ShieldArt id={profile.shieldId} />
           </span>
           <div className="club-meta">
-            <div className="club-name">REAL MADRID</div>
+            <div className="club-name">MI CLUB</div>
             <div className="club-pres">
-              <span className="ua">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={PROFILE.avatar} alt="" />
+              <span className="ua club-ua">
+                <AvatarArt id={profile.avatarId} />
               </span>
-              Presidente <b>{PROFILE.name}</b> ·{" "}
-              <span className="fl">
-                <FlagSvg code={PROFILE.countryFlag} />
-              </span>{" "}
-              {PROFILE.country}
+              Presidente <b>{profile.presidentName}</b>
+              {profile.country && (
+                <>
+                  {" · "}
+                  <span className="fl">
+                    <FlagSvg code={profile.country} />
+                  </span>{" "}
+                  {profile.countryName}
+                </>
+              )}
             </div>
           </div>
         </div>
