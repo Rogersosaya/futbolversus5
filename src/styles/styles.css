@@ -238,11 +238,3 @@ table.tbl tbody td.team{text-align:left}
 .fx .fx-m .t .cr{width:30px;height:30px}
 .fx .fx-m .sc{font-weight:700;font-size:23px;color:#fff;letter-spacing:.06em}
 .fx .fx-m .sc.tbd{color:var(--txt-3);font-weight:400}
-
-#chrome{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:8px;
-  padding:8px 12px;border-radius:40px;background:rgba(12,16,24,.82);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(8px)}
-#chrome .nv{height:34px;padding:0 16px;border-radius:30px;border:0;cursor:pointer;background:transparent;color:var(--txt-3);
-  font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.12em;transition:all .2s}
-#chrome .nv:hover{color:var(--txt)}
-#chrome .nv.on{background:var(--red);color:#fff}
-#chrome .hint{color:var(--txt-4);font-size:12px;padding:0 8px;letter-spacing:.04em}

@@ -32,30 +32,3 @@ export const HOME_NAV: HomeNavSection[] = [
   },
 ];
 
-/** Every route that lives inside the Menú screen (shares its layout). */
-export const MENU_ROUTES = [
-  "/",
-  "/amistoso",
-  "/desafio",
-  "/torneos",
-  "/mercado",
-  "/transfer",
-  "/club",
-  "/ligas",
-];
-
-export interface ScreenNavItem {
-  label: string;
-  href: string;
-  /** Extra routes (besides href) that should mark this screen active. */
-  match?: string[];
-}
-
-/** Bottom "chrome" switcher cycling the five top-level screens. */
-export const SCREENS: ScreenNavItem[] = [
-  { label: "MENÚ", href: "/", match: MENU_ROUTES },
-  { label: "VS", href: "/vs" },
-  { label: "ALINEACIÓN", href: "/alineacion" },
-  { label: "PARTIDO", href: "/partido" },
-  { label: "TABLA", href: "/tabla" },
-];
