@@ -1,0 +1,86 @@
+/* FUTBOL VERSUS — Ruta de Ligas (arenas) + league chip on Liga screen */
+
+/* clickable league chip on Partido de Liga */
+.league-chip{align-self:flex-start;display:flex;align-items:center;gap:14px;height:64px;padding:0 18px 0 10px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(11,15,23,.72);backdrop-filter:blur(6px);cursor:pointer;transition:all .2s}
+.league-chip:hover{border-color:rgba(232,207,142,.5);background:rgba(15,20,30,.85);transform:translateY(-1px)}
+.lc-em{width:46px;height:46px;border-radius:50%;overflow:hidden;flex:0 0 auto;border:2px solid rgba(232,207,142,.7);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.lc-em svg{width:100%;height:100%;display:block}
+.lc-tx{display:flex;flex-direction:column;gap:3px;text-align:left}
+.lc-tx small{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.16em;color:var(--gold)}
+.lc-tx b{font-family:var(--font-d);font-weight:700;font-size:22px;letter-spacing:.04em;color:#f2f5fa;line-height:.9}
+.lc-go{display:flex;align-items:center;gap:6px;margin-left:10px;padding-left:16px;border-left:1px solid var(--line);
+  font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:.1em;color:var(--txt-3)}
+.league-chip:hover .lc-go{color:#fff}
+
+/* ===== RUTA DE LIGAS view ===== */
+.ligas{display:flex;flex-direction:column;height:100%;min-height:0}
+.back-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:30px;border:1px solid var(--line);
+  background:rgba(255,255,255,.02);cursor:pointer;font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.1em;color:var(--txt-3);transition:all .18s}
+.back-chip:hover{color:var(--txt);border-color:var(--line-strong)}
+.lg-hud{display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding:12px 22px;border-radius:12px;
+  background:linear-gradient(90deg,rgba(232,207,142,.14),rgba(232,207,142,.03));border:1px solid rgba(232,207,142,.35)}
+.lg-hud-l{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.18em;color:var(--gold)}
+.lg-hud-v{font-family:var(--font-d);font-weight:800;font-size:40px;color:#fff;line-height:.85}
+.lg-hud-n{font-weight:400;font-size:14px;color:var(--txt-3)}
+
+.road{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 6px 10px 2px;position:relative}
+.lg-step{display:grid;grid-template-columns:64px 1fr;gap:18px;position:relative}
+.lg-rail{position:relative;display:flex;justify-content:center}
+/* connecting line through the rail column */
+.lg-rail::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:3px;transform:translateX(-50%);background:var(--line)}
+.lg-step:first-child .lg-rail::before{top:38px}
+.lg-step:last-child .lg-rail::before{bottom:calc(100% - 38px)}
+.lg-mark{position:relative;z-index:2;width:40px;height:40px;margin-top:18px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--bg-1);border:3px solid var(--line);color:var(--txt-3)}
+.lg-mark svg{width:20px;height:20px}
+.lg-step.done .lg-rail::before{background:linear-gradient(var(--ok),var(--ok))}
+.lg-step.done .lg-mark{background:var(--ok);border-color:var(--ok);color:#06210f}
+.lg-step.current .lg-mark{background:var(--bg-1);border-color:var(--gold);box-shadow:0 0 0 4px rgba(232,207,142,.18),0 0 18px rgba(232,207,142,.4)}
+.lg-pulse{width:14px;height:14px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold);animation:lgpulse 1.6s ease-in-out infinite}
+@keyframes lgpulse{0%,100%{transform:scale(.8);opacity:.8}50%{transform:scale(1.15);opacity:1}}
+.lg-step.locked .lg-mark{opacity:.6}
+
+.lg-card{border:1px solid var(--line);border-radius:14px;background:var(--panel-solid);padding:18px 22px;margin-bottom:18px;transition:all .2s}
+.lg-card.done{opacity:.92}
+.lg-card.current{border-color:rgba(232,207,142,.55);background:radial-gradient(120% 140% at 0% 0%,rgba(232,207,142,.12),transparent 50%),var(--panel-solid);
+  box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 0 0 1px rgba(232,207,142,.12)}
+.lg-card.locked{opacity:.6}
+.lg-main{display:flex;align-items:center;gap:18px}
+.lg-em{width:58px;height:58px;border-radius:50%;overflow:hidden;flex:0 0 auto;border:2px solid var(--line-strong);box-shadow:0 6px 16px rgba(0,0,0,.45)}
+.lg-em svg{width:100%;height:100%;display:block}
+.lg-em.done{border-color:rgba(70,194,117,.7)}
+.lg-em.current{border-color:var(--gold);box-shadow:0 0 16px rgba(232,207,142,.45)}
+.lg-em.locked{filter:grayscale(.7) brightness(.7)}
+.lg-info{flex:1;min-width:0}
+.lg-name{font-family:var(--font-d);font-weight:800;font-size:30px;letter-spacing:.02em;color:#f2f5fa;line-height:.95;display:flex;align-items:center;gap:12px}
+.lg-tier{font-family:var(--font-d);font-weight:700;font-size:12px;letter-spacing:.16em;color:var(--txt-3);border:1px solid var(--line);border-radius:20px;padding:3px 10px}
+.lg-country{font-weight:400;font-size:17px;color:var(--txt-2);margin-top:2px}
+.lg-req{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.14em;color:var(--txt-3);margin-top:6px}
+.lg-card.current .lg-req{color:var(--gold)}
+.lg-status{font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.12em;border-radius:30px;padding:7px 15px;flex:0 0 auto;white-space:nowrap}
+.lg-status.done{background:rgba(70,194,117,.16);color:#7bdc9f;border:1px solid rgba(70,194,117,.4)}
+.lg-status.current{background:rgba(232,207,142,.18);color:var(--gold);border:1px solid rgba(232,207,142,.4)}
+.lg-status.locked{background:rgba(255,255,255,.04);color:var(--txt-3);border:1px solid var(--line)}
+.lg-unlocks{display:flex;gap:10px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft)}
+.lg-unlock{display:flex;align-items:center;gap:8px;font-family:var(--font-u);font-weight:500;font-size:16px;color:var(--txt-2);
+  background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:8px;padding:8px 14px}
+.lg-unlock svg{width:18px;height:18px;color:var(--gold);flex:0 0 auto}
+.lg-card.locked .lg-unlock svg{color:var(--txt-3)}
+.lg-prog{margin-top:16px}
+.lg-prog-bar{height:9px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden}
+.lg-prog-bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#e8cf8e,#caa341)}
+.lg-prog-tx{font-weight:400;font-size:15px;color:var(--txt-2);margin-top:9px}
+.lg-prog-tx b{color:#fff;font-weight:700}
+
+/* ===== Mercado lock states (league gating) ===== */
+.store-item.locked{opacity:.96}
+.store-item.locked .si-art::before{content:"";position:absolute;inset:0;z-index:2;background:rgba(6,9,14,.62);backdrop-filter:grayscale(.6)}
+.si-lock{position:absolute;top:0;left:0;right:0;height:150px;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:10px}
+.si-lock svg{width:30px;height:30px;color:#dfe3ea}
+.si-lock .ll{font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.08em;color:#fff}
+.si-lock .lf{display:flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.06em;color:var(--gold)}
+.si-lock .lf .fl{width:20px;height:14px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.18)}
+.si-lock .lf .fl svg{width:100%;height:100%;color:inherit}
+.si-btn.lock{background:transparent;color:var(--txt-3);border:1px solid var(--line);cursor:default;display:flex;align-items:center;gap:7px}
+.si-btn.lock svg{width:13px;height:13px}

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* The game UI lives in bespoke stylesheets imported from src/styles via
+   the root layout. Tailwind stays available for any future utility use,
+   but the FUTBOL VERSUS design is driven entirely by those stylesheets. */
+
+html,
+body {
+  height: 100%;
+}
