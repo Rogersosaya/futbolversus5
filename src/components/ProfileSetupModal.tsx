@@ -2,19 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
 import { updateProfile } from "@/app/actions/auth";
-import { COUNTRIES, AVATARS, STADIUMS, SHIELDS } from "@/data/game-assets";
-import {
-  AvatarVeteranArt,
-  AvatarModernArt,
-  AvatarVisionaryArt,
-  StadiumColiseoArt,
-  StadiumArenaArt,
-  StadiumFortalezaArt,
-  ShieldClasicoArt,
-  ShieldCirculoArt,
-  ShieldAngularArt,
-} from "@/components/game-art";
+import { COUNTRIES } from "@/data/game-assets";
+import { CollectibleGlyph } from "@/components/CollectibleArt";
+import type { Collectible } from "@/actions/catalog";
 
 /* ─── Step meta ─── */
 
@@ -44,7 +36,40 @@ const STEP_META: Record<Step, { title: string; sub: string; label: string }> = {
   },
 };
 
-/* ─── Step components ─── */
+/* ─── Generic collectible picker ─── */
+
+function CollectiblePicker({
+  options,
+  selected,
+  onSelect,
+  ariaLabel,
+}: {
+  options: Collectible[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="sel-grid" role="group" aria-label={ariaLabel}>
+      {options.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          className={`sel-tile${selected === c.id ? " sel" : ""}`}
+          onClick={() => onSelect(c.id)}
+          aria-pressed={selected === c.id}
+        >
+          <div className="sel-art">
+            <CollectibleGlyph c={c} />
+          </div>
+          <div className="sel-info">
+            <div className="sel-name">{c.name}</div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function StepIdentity({
   name,
@@ -98,108 +123,21 @@ function StepIdentity({
   );
 }
 
-function StepAvatar({
-  selected,
-  setSelected,
-}: {
-  selected: string | null;
-  setSelected: (v: string) => void;
-}) {
-  const arts: Record<string, React.ReactNode> = {
-    veteran: <AvatarVeteranArt />,
-    modern: <AvatarModernArt />,
-    visionary: <AvatarVisionaryArt />,
-  };
-  return (
-    <div className="sel-grid" role="group" aria-label="Elige tu avatar">
-      {AVATARS.map((a) => (
-        <button
-          key={a.id}
-          type="button"
-          className={`sel-tile${selected === a.id ? " sel" : ""}`}
-          onClick={() => setSelected(a.id)}
-          aria-pressed={selected === a.id}
-        >
-          <div className="sel-art">{arts[a.id]}</div>
-          <div className="sel-info">
-            <div className="sel-name">{a.name}</div>
-            <div className="sel-desc">{a.desc}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StepStadium({
-  selected,
-  setSelected,
-}: {
-  selected: string | null;
-  setSelected: (v: string) => void;
-}) {
-  const arts: Record<string, React.ReactNode> = {
-    coliseo: <StadiumColiseoArt />,
-    arena: <StadiumArenaArt />,
-    fortaleza: <StadiumFortalezaArt />,
-  };
-  return (
-    <div className="sel-grid" role="group" aria-label="Elige tu estadio">
-      {STADIUMS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          className={`sel-tile${selected === s.id ? " sel" : ""}`}
-          onClick={() => setSelected(s.id)}
-          aria-pressed={selected === s.id}
-        >
-          <div className="sel-art">{arts[s.id]}</div>
-          <div className="sel-info">
-            <div className="sel-name">{s.name}</div>
-            <div className="sel-desc">{s.desc}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StepShield({
-  selected,
-  setSelected,
-}: {
-  selected: string | null;
-  setSelected: (v: string) => void;
-}) {
-  const arts: Record<string, React.ReactNode> = {
-    clasico: <ShieldClasicoArt />,
-    circulo: <ShieldCirculoArt />,
-    angular: <ShieldAngularArt />,
-  };
-  return (
-    <div className="sel-grid" role="group" aria-label="Elige tu escudo">
-      {SHIELDS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          className={`sel-tile${selected === s.id ? " sel" : ""}`}
-          onClick={() => setSelected(s.id)}
-          aria-pressed={selected === s.id}
-        >
-          <div className="sel-art">{arts[s.id]}</div>
-          <div className="sel-info">
-            <div className="sel-name">{s.name}</div>
-            <div className="sel-desc">{s.desc}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ─── Main modal ─── */
 
-export function ProfileSetupModal({ userId }: { userId: string }) {
+export interface SetupOptions {
+  avatars: Collectible[];
+  stadiums: Collectible[];
+  shields: Collectible[];
+}
+
+export function ProfileSetupModal({
+  userId,
+  options,
+}: {
+  userId: string;
+  options: SetupOptions;
+}) {
   void userId; // passed for context; auth action re-derives user from cookies
   const router = useRouter();
   const [step, setStep] = useState<Step>("identity");
@@ -233,15 +171,24 @@ export function ProfileSetupModal({ userId }: { userId: string }) {
     if (prv) setStep(prv);
   }
 
+  /** The persisted profile value for a collectible is its id. */
+  const valueOf = (list: Collectible[], id: string | null) => {
+    const c = list.find((o) => o.id === id);
+    return c?.id ?? null;
+  };
+
   function handleConfirm() {
-    if (!name || !country || !avatar || !stadium || !shield) return;
+    const avatarId = valueOf(options.avatars, avatar);
+    const stadiumId = valueOf(options.stadiums, stadium);
+    const shieldId = valueOf(options.shields, shield);
+    if (!name || !country || !avatarId || !stadiumId || !shieldId) return;
     startTransition(async () => {
       await updateProfile({
         presidentName: name.trim(),
         country,
-        avatarId: avatar,
-        stadiumId: stadium,
-        shieldId: shield,
+        avatarId,
+        stadiumId,
+        shieldId,
       });
       setDone(true);
       router.refresh();
@@ -283,13 +230,28 @@ export function ProfileSetupModal({ userId }: { userId: string }) {
             <StepIdentity name={name} setName={setName} country={country} setCountry={setCountry} />
           )}
           {step === "avatar" && (
-            <StepAvatar selected={avatar} setSelected={setAvatar} />
+            <CollectiblePicker
+              options={options.avatars}
+              selected={avatar}
+              onSelect={setAvatar}
+              ariaLabel="Elige tu avatar"
+            />
           )}
           {step === "stadium" && (
-            <StepStadium selected={stadium} setSelected={setStadium} />
+            <CollectiblePicker
+              options={options.stadiums}
+              selected={stadium}
+              onSelect={setStadium}
+              ariaLabel="Elige tu estadio"
+            />
           )}
           {step === "shield" && (
-            <StepShield selected={shield} setSelected={setShield} />
+            <CollectiblePicker
+              options={options.shields}
+              selected={shield}
+              onSelect={setShield}
+              ariaLabel="Elige tu escudo"
+            />
           )}
         </div>
 

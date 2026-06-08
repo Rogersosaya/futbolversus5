@@ -14,3 +14,106 @@ model Game {
   imageUrl              String
   availableDifficulties String[]
 }
+
+/// The three kinds of unlockable cosmetic ("card", à la Clash Royale).
+enum CollectibleKind {
+  CREST // escudo de club
+  AVATAR // avatar / caricatura del presidente
+  STADIUM // estadio
+
+  @@map("collectible_kind")
+}
+
+/// Rarity tier — drives the badge shown in the store.
+enum Rarity {
+  LEGEND
+  EPIC
+  RARE
+  COMMON
+
+  @@map("rarity")
+}
+
+/// A league level in the "Ruta de Ligas" (like a Clash Royale arena). The
+/// player ascends through leagues as their club's market value grows, and each
+/// league unlocks the collectibles tied to it.
+model League {
+  id          String @id @default(cuid())
+  /// Short stable slug, e.g. "pe", "ar". Used by the UI and flag symbols.
+  code        String @unique
+  name        String
+  /// Display country name, e.g. "Perú".
+  country     String
+  /// ISO-ish flag code used by the flag symbol sheet, e.g. "pe", "gb".
+  countryCode String @map("country_code")
+  imageUrl    String @map("image_url")
+  /// 1-based progression order (1 = first/lowest league).
+  tier        Int    @unique
+  /// Market value (€M) the club must reach to enter this league.
+  minMarketValue Int  @map("min_market_value")
+  /// Market value (€M) at which the club ascends to the next league. Null for
+  /// the top league (no ceiling).
+  maxMarketValue Int? @map("max_market_value")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  collectibles Collectible[]
+  profiles     Profile[]
+
+  @@map("leagues")
+}
+
+/// A signed-in player ("president"). Mirrors the Supabase `profiles` table
+/// (rows are created by the `on_auth_user_created` trigger; `id` references
+/// `auth.users`). Related to the league the club currently competes in.
+model Profile {
+  id            String   @id @db.Uuid
+  presidentName String?  @map("president_name")
+  country       String?
+  avatarId      String?  @map("avatar_id")
+  stadiumId     String?  @map("stadium_id")
+  shieldId      String?  @map("shield_id")
+  marketValue   Int      @default(0) @map("market_value")
+  budget        Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  leagueId String? @map("league_id")
+  league   League? @relation(fields: [leagueId], references: [id], onDelete: SetNull)
+
+  @@index([leagueId])
+  @@map("profiles")
+}
+
+/// A cosmetic the player can unlock/buy in the Mercado. Becomes available once
+/// the player reaches the league it belongs to. Starter collectibles are also
+/// offered during first-login profile setup.
+model Collectible {
+  id          String          @id @default(cuid())
+  kind        CollectibleKind
+  name        String
+  /// Maps to a built-in vector art / CSS modifier (e.g. "veteran", "crest-rma",
+  /// "coliseo"). Null when the art is a raster image instead.
+  artKey      String?         @map("art_key")
+  /// Optional raster image (e.g. a stadium photo).
+  imageUrl    String?         @map("image_url")
+  /// Optional 2-stop gradient for generated tiles (stadiums without a photo).
+  gradientFrom String?        @map("gradient_from")
+  gradientTo   String?        @map("gradient_to")
+  rarity      Rarity          @default(COMMON)
+  /// Price in coins. 0 = free starter pick.
+  price       Int             @default(0)
+  /// Whether this is offered as an option during first-login profile setup.
+  isStarter   Boolean         @default(false) @map("is_starter")
+  /// Ordering within its (league, kind) group.
+  sortOrder   Int             @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  leagueId String @map("league_id")
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId])
+  @@index([kind])
+  @@map("collectibles")
+}

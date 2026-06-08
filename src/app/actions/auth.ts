@@ -1,5 +1,6 @@
 "use server";
 
+import { prisma } from "@/lib/prisma";
 import { createSSRClient } from "@/lib/supabase-server";
 
 export async function updateProfile(data: {
@@ -16,19 +17,17 @@ export async function updateProfile(data: {
 
   if (!user) throw new Error("Not authenticated");
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      president_name: data.presidentName,
+  await prisma.profile.update({
+    where: { id: user.id },
+    data: {
+      presidentName: data.presidentName,
       country: data.country,
-      avatar_id: data.avatarId,
-      stadium_id: data.stadiumId,
-      shield_id: data.shieldId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
-
-  if (error) throw new Error(error.message);
+      avatarId: data.avatarId,
+      stadiumId: data.stadiumId,
+      shieldId: data.shieldId,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 export async function signOut() {

@@ -203,3 +203,14 @@ export function ShieldArt({ id, className }: { id: string | null; className?: st
   if (!className) return inner;
   return <span className={className}>{inner}</span>;
 }
+
+export function StadiumArt({ id, className }: { id: string | null; className?: string }) {
+  const inner =
+    id === "coliseo"   ? <StadiumColiseoArt /> :
+    id === "arena"     ? <StadiumArenaArt /> :
+    id === "fortaleza" ? <StadiumFortalezaArt /> :
+    <StadiumColiseoArt />;
+
+  if (!className) return inner;
+  return <span className={className}>{inner}</span>;
+}

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { FlagSvg, Sym } from "@/components/svg";
 import { AvatarArt, ShieldArt } from "@/components/game-art";
+import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { useProfile } from "@/components/ProfileContext";
 import {
   CLUB_KPIS,
@@ -26,13 +27,13 @@ export default function ClubPage() {
       <div className="club-head">
         <div className="club-id">
           <span className="club-crest">
-            <ShieldArt id={profile.shieldId} />
+            {profile.shieldArt ? <CollectibleGlyph c={profile.shieldArt} /> : <ShieldArt id={profile.shieldId} />}
           </span>
           <div className="club-meta">
             <div className="club-name">MI CLUB</div>
             <div className="club-pres">
               <span className="ua club-ua">
-                <AvatarArt id={profile.avatarId} />
+                {profile.avatarArt ? <CollectibleGlyph c={profile.avatarArt} /> : <AvatarArt id={profile.avatarId} />}
               </span>
               Presidente <b>{profile.presidentName}</b>
               {profile.country && (

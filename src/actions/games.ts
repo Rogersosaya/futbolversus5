@@ -1,21 +1,11 @@
-// Reads: regular async functions for use in Server Components (no "use server" needed)
-import { createServerClient } from "@/lib/supabase-server";
+// Game reads via Prisma. Plain async functions for use in Server Components.
+import { prisma } from "@/lib/prisma";
 import type { Game } from "@/generated/prisma/client";
 
 export async function getGames(): Promise<Game[]> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase.from("Game").select("*").order("id");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Game[];
+  return prisma.game.findMany({ orderBy: { id: "asc" } });
 }
 
 export async function getGameById(id: number): Promise<Game | null> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("Game")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (error) return null;
-  return data as Game;
+  return prisma.game.findUnique({ where: { id } });
 }

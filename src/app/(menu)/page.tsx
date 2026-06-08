@@ -4,9 +4,9 @@ import Link from "next/link";
 
 import { FlagSvg, Icon } from "@/components/svg";
 import { AvatarArt, ShieldArt } from "@/components/game-art";
+import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { useProfile } from "@/components/ProfileContext";
 import { useOverlay } from "@/components/overlay-context";
-import { currentLeagueInfo } from "@/data/leagues";
 
 const ChevronIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -17,8 +17,8 @@ const ChevronIcon = () => (
 /** Liga view — the default Menú landing, with the "Partido de Liga" CTA. */
 export default function LigaPage() {
   const { openLobby } = useOverlay();
-  const { league } = currentLeagueInfo();
   const profile = useProfile();
+  const league = profile.currentLeague;
 
   return (
     <div className="liga">
@@ -28,12 +28,13 @@ export default function LigaPage() {
       <div className="liga-inner">
         <Link className="league-chip" href="/ligas">
           <span className="lc-em">
-            <FlagSvg code={league.flag} slice />
+            <FlagSvg code={league?.countryCode ?? "pe"} slice />
           </span>
           <span className="lc-tx">
             <small>LIGA ACTUAL · FECHA 7</small>
             <b>
-              {league.name.toUpperCase()} · {league.country.toUpperCase()}
+              {(league?.name ?? "Liga 1").toUpperCase()} ·{" "}
+              {(league?.country ?? "Perú").toUpperCase()}
             </b>
           </span>
           <span className="lc-go">
@@ -43,7 +44,7 @@ export default function LigaPage() {
 
         <div className="liga-hero">
           <div className="liga-avatar">
-            <AvatarArt id={profile.avatarId} />
+            {profile.avatarArt ? <CollectibleGlyph c={profile.avatarArt} /> : <AvatarArt id={profile.avatarId} />}
           </div>
           <div className="liga-copy">
             <h2>
@@ -61,7 +62,7 @@ export default function LigaPage() {
         <div className="liga-row">
           <div className="user-card">
             <div className="ua liga-ua">
-              <AvatarArt id={profile.avatarId} />
+              {profile.avatarArt ? <CollectibleGlyph c={profile.avatarArt} /> : <AvatarArt id={profile.avatarId} />}
             </div>
             <div className="ud">
               <div className="un">{profile.presidentName.toUpperCase()}</div>
@@ -79,7 +80,7 @@ export default function LigaPage() {
                     <span className="sep" />
                     <span className="bit">
                       <span className="cr" style={{ width: 22, height: 22, display: "inline-flex" }}>
-                        <ShieldArt id={profile.shieldId} />
+                        {profile.shieldArt ? <CollectibleGlyph c={profile.shieldArt} /> : <ShieldArt id={profile.shieldId} />}
                       </span>
                     </span>
                   </>
