@@ -73,7 +73,10 @@ model Profile {
   avatarId      String?  @map("avatar_id")
   stadiumId     String?  @map("stadium_id")
   shieldId      String?  @map("shield_id")
-  marketValue   Int      @default(0) @map("market_value")
+  /// The club's value (€M) — drives league progression only.
+  clubValue     Int      @default(0) @map("club_value")
+  /// Spendable budget (€M) used to buy collectibles in the Mercado.
+  clubFunds     Int      @default(0) @map("club_funds")
   budget        Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @map("updated_at")

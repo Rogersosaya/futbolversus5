@@ -25,7 +25,10 @@ export interface LiveProfile {
   avatarArt: CollectibleArtData | null;
   stadiumArt: CollectibleArtData | null;
   shieldArt: CollectibleArtData | null;
-  marketValue: number;
+  /** Club value (€M) — drives league progression. */
+  clubValue: number;
+  /** Spendable budget (€M) for the Mercado. */
+  clubFunds: number;
   budget: number;
   currentLeague: CurrentLeague | null;
 }
@@ -40,7 +43,8 @@ const ProfileCtx = createContext<LiveProfile>({
   avatarArt: null,
   stadiumArt: null,
   shieldArt: null,
-  marketValue: 0,
+  clubValue: 0,
+  clubFunds: 0,
   budget: 0,
   currentLeague: null,
 });

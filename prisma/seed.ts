@@ -167,47 +167,48 @@ const stadiumRows: [string, string, number][] = [
 
 // ── Escudos de clubes — clubes principales de cada liga ──────────────────────
 // Crest images follow the same local-asset convention as players/stadiums:
-// /crests/<slug>.png. [slug, clubName, leagueCode]
-const crestRows: [string, string, string][] = [
-  ["alianza-lima", "Alianza Lima", "pe"],
-  ["universitario", "Universitario", "pe"],
-  ["sporting-cristal", "Sporting Cristal", "pe"],
-  ["america", "Club América", "mx"],
-  ["guadalajara", "Chivas de Guadalajara", "mx"],
-  ["cruz-azul", "Cruz Azul", "mx"],
-  ["tigres", "Tigres UANL", "mx"],
-  ["boca-juniors", "Boca Juniors", "ar"],
-  ["river-plate", "River Plate", "ar"],
-  ["racing", "Racing Club", "ar"],
-  ["independiente", "Independiente", "ar"],
-  ["flamengo", "Flamengo", "br"],
-  ["palmeiras", "Palmeiras", "br"],
-  ["corinthians", "Corinthians", "br"],
-  ["sao-paulo", "São Paulo", "br"],
-  ["bayern-munich", "Bayern Múnich", "de"],
-  ["borussia-dortmund", "Borussia Dortmund", "de"],
-  ["rb-leipzig", "RB Leipzig", "de"],
-  ["bayer-leverkusen", "Bayer Leverkusen", "de"],
-  ["psg", "Paris Saint-Germain", "fr"],
-  ["marseille", "Olympique de Marsella", "fr"],
-  ["lyon", "Olympique de Lyon", "fr"],
-  ["monaco", "AS Mónaco", "fr"],
-  ["juventus", "Juventus", "it"],
-  ["inter", "Inter de Milán", "it"],
-  ["milan", "AC Milan", "it"],
-  ["napoli", "Napoli", "it"],
-  ["real-madrid", "Real Madrid", "es"],
-  ["barcelona", "FC Barcelona", "es"],
-  ["atletico-madrid", "Atlético de Madrid", "es"],
-  ["sevilla", "Sevilla FC", "es"],
-  ["manchester-city", "Manchester City", "en"],
-  ["liverpool", "Liverpool", "en"],
-  ["manchester-united", "Manchester United", "en"],
-  ["arsenal", "Arsenal", "en"],
-  ["chelsea", "Chelsea", "en"],
-  ["santos", "Santos FC", "legends"],
-  ["ajax", "AFC Ajax", "legends"],
-  ["cosmos", "New York Cosmos", "legends"],
+// [slug, clubName, leagueCode, imageUrl?]. When a remote crest URL is given it
+// is used as image_url; otherwise it falls back to /crests/<slug>.png.
+const crestRows: [string, string, string, string?][] = [
+  ["alianza-lima", "Alianza Lima", "pe", "https://upload.wikimedia.org/wikipedia/commons/c/c5/Escudo_Alianza_Lima.svg"],
+  ["universitario", "Universitario", "pe", "https://upload.wikimedia.org/wikipedia/commons/7/77/Logo_oficial_de_Universitario.svg"],
+  ["sporting-cristal", "Sporting Cristal", "pe", "https://upload.wikimedia.org/wikipedia/commons/5/59/Escudo_de_Sporting_Cristal_2025.svg"],
+  ["america", "Club América", "mx", "https://upload.wikimedia.org/wikipedia/commons/8/8d/Club_America_Logo.svg"],
+  ["guadalajara", "Chivas de Guadalajara", "mx", "https://upload.wikimedia.org/wikipedia/en/7/7f/Chivas_de_Guadalajara_logo.svg"],
+  ["cruz-azul", "Cruz Azul", "mx", "https://upload.wikimedia.org/wikipedia/commons/5/58/Cruz_Azul_logo.svg"],
+  ["tigres", "Tigres UANL", "mx", "https://upload.wikimedia.org/wikipedia/en/8/82/Tigres_UANL_logo_%28crest%29.svg"],
+  ["boca-juniors", "Boca Juniors", "ar", "https://upload.wikimedia.org/wikipedia/commons/4/41/CABJ_Logo.svg"],
+  ["river-plate", "River Plate", "ar", "https://upload.wikimedia.org/wikipedia/commons/a/ac/Escudo_del_C_A_River_Plate.svg"],
+  ["racing", "Racing Club", "ar", "https://upload.wikimedia.org/wikipedia/commons/5/56/Escudo_de_Racing_Club_%282014%29.svg"],
+  ["independiente", "Independiente", "ar", "https://upload.wikimedia.org/wikipedia/commons/d/db/Escudo_del_Club_Atl%C3%A9tico_Independiente.svg"],
+  ["flamengo", "Flamengo", "br", "https://upload.wikimedia.org/wikipedia/commons/9/93/Flamengo-RJ_%28BRA%29.png"],
+  ["palmeiras", "Palmeiras", "br", "https://upload.wikimedia.org/wikipedia/commons/1/10/Palmeiras_logo.svg"],
+  ["corinthians", "Corinthians", "br", "https://upload.wikimedia.org/wikipedia/en/5/5a/Corinthians_oficial_logo.svg"],
+  ["sao-paulo", "São Paulo", "br", "https://upload.wikimedia.org/wikipedia/commons/f/f4/S%C3%A3o_Paulo_Futebol_Clube_logo_%282022%29.svg"],
+  ["bayern-munich", "Bayern Múnich", "de", "https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg"],
+  ["borussia-dortmund", "Borussia Dortmund", "de", "https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg"],
+  ["rb-leipzig", "RB Leipzig", "de", "https://upload.wikimedia.org/wikipedia/en/0/04/RB_Leipzig_2014_logo.svg"],
+  ["bayer-leverkusen", "Bayer Leverkusen", "de", "https://upload.wikimedia.org/wikipedia/en/5/59/Bayer_04_Leverkusen_logo.svg"],
+  ["psg", "Paris Saint-Germain", "fr", "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg"],
+  ["marseille", "Olympique de Marsella", "fr", "https://upload.wikimedia.org/wikipedia/commons/4/4f/Olympique_de_Marseille_2026_logo.svg"],
+  ["lyon", "Olympique de Lyon", "fr", "https://upload.wikimedia.org/wikipedia/en/1/1c/Olympique_Lyonnais_logo.svg"],
+  ["monaco", "AS Mónaco", "fr", "https://upload.wikimedia.org/wikipedia/en/c/cf/LogoASMonacoFC2021.svg"],
+  ["juventus", "Juventus", "it", "https://upload.wikimedia.org/wikipedia/commons/a/a8/Juventus_FC_-_pictogram_black_%28Italy%2C_2017%29.svg"],
+  ["inter", "Inter de Milán", "it", "https://upload.wikimedia.org/wikipedia/commons/0/05/FC_Internazionale_Milano_2021.svg"],
+  ["milan", "AC Milan", "it", "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg"],
+  ["napoli", "Napoli", "it", "https://upload.wikimedia.org/wikipedia/commons/4/4d/SSC_Napoli_2025_%28white_and_azure%29.svg"],
+  ["real-madrid", "Real Madrid", "es", "https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg"],
+  ["barcelona", "FC Barcelona", "es", "https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg"],
+  ["atletico-madrid", "Atlético de Madrid", "es", "https://upload.wikimedia.org/wikipedia/en/f/f4/Atletico_Madrid_2017_logo.svg"],
+  ["sevilla", "Sevilla FC", "es", "https://upload.wikimedia.org/wikipedia/en/3/3b/Sevilla_FC_logo.svg"],
+  ["manchester-city", "Manchester City", "en", "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg"],
+  ["liverpool", "Liverpool", "en", "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg"],
+  ["manchester-united", "Manchester United", "en", "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg"],
+  ["arsenal", "Arsenal", "en", "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg"],
+  ["chelsea", "Chelsea", "en", "https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg"],
+  ["santos", "Santos FC", "legends", "https://upload.wikimedia.org/wikipedia/commons/3/35/Santos_logo.svg"],
+  ["ajax", "AFC Ajax", "legends", "https://upload.wikimedia.org/wikipedia/en/7/79/Ajax_Amsterdam.svg"],
+  ["cosmos", "New York Cosmos", "legends", "https://upload.wikimedia.org/wikipedia/en/8/85/New_York_Cosmos_2010.svg"],
 ];
 
 interface SeedCollectible {
@@ -241,7 +242,7 @@ function buildCollectibles(): SeedCollectible[] {
       name: player,
       imageUrl: url,
       rarity: rarityForTier(tier),
-      price: tier * 4000,
+      price: tier * 3, // €M
       sortOrder: next(`${code}:AVATAR`),
     });
   }
@@ -256,21 +257,21 @@ function buildCollectibles(): SeedCollectible[] {
       name,
       imageUrl: url,
       rarity: rarityForTier(tier),
-      price: tier * 5000,
+      price: tier * 4, // €M
       sortOrder: next(`${code}:STADIUM`),
     });
   }
 
-  for (const [slug, club, code] of crestRows) {
+  for (const [slug, club, code, crestUrl] of crestRows) {
     const tier = tierOf(code);
     out.push({
       id: `${code}-crest-${slug}`,
       leagueCode: code,
       kind: "CREST",
       name: club,
-      imageUrl: `/crests/${slug}.png`,
+      imageUrl: crestUrl ?? `/crests/${slug}.png`,
       rarity: rarityForTier(tier),
-      price: tier * 4500,
+      price: tier * 3, // €M
       sortOrder: next(`${code}:CREST`),
     });
   }

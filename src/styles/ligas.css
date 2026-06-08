@@ -22,6 +22,7 @@
   background:linear-gradient(90deg,rgba(232,207,142,.14),rgba(232,207,142,.03));border:1px solid rgba(232,207,142,.35)}
 .lg-hud-l{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.18em;color:var(--gold)}
 .lg-hud-v{font-family:var(--font-d);font-weight:800;font-size:40px;color:#fff;line-height:.85}
+.lg-hud-v svg{color:#8fd3ff}
 .lg-hud-n{font-weight:400;font-size:14px;color:var(--txt-3)}
 
 .road{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 6px 10px 2px;position:relative}

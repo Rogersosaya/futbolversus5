@@ -44,10 +44,10 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
   const displayName = profile?.presidentName ?? "Presidente";
   const budget: number = profile?.budget ?? 0;
 
-  // Derive the player's current league from market value (Liga 1 at value 0).
+  // Derive the player's current league from club value (Liga 1 at value 0).
   const leagues = await getLeagues();
-  const marketValue = profile?.marketValue ?? 0;
-  const current = leagues[currentLeagueIndex(leagues, marketValue)];
+  const clubValue = profile?.clubValue ?? 0;
+  const current = leagues[currentLeagueIndex(leagues, clubValue)];
 
   // First-login setup: options come from the collectibles available in the
   // league the club currently sits in. Only loaded when setup is pending.
@@ -82,7 +82,8 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
     avatarArt,
     stadiumArt,
     shieldArt,
-    marketValue,
+    clubValue,
+    clubFunds: profile?.clubFunds ?? 0,
     budget: profile?.budget ?? 0,
     currentLeague: current
       ? { name: current.name, country: current.country, countryCode: current.countryCode }

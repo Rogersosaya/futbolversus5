@@ -12,7 +12,7 @@ export default async function MercadoPage() {
   ]);
 
   const profile = session.profile;
-  const value = profile?.marketValue ?? 0;
+  const value = profile?.clubValue ?? 0;
   const currentIdx = currentLeagueIndex(leagues, value);
   const currentTier = leagues[currentIdx]?.tier ?? 1;
 
@@ -23,5 +23,12 @@ export default async function MercadoPage() {
     ),
   );
 
-  return <MercadoView items={collectibles} currentTier={currentTier} ownedIds={[...owned]} />;
+  return (
+    <MercadoView
+      items={collectibles}
+      currentTier={currentTier}
+      ownedIds={[...owned]}
+      funds={profile?.clubFunds ?? 0}
+    />
+  );
 }

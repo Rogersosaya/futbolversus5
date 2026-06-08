@@ -109,14 +109,27 @@
 .mg-empty{display:grid;place-items:center;color:var(--txt-4);font-family:var(--font-d);font-weight:600;font-size:18px;letter-spacing:.18em;text-align:center;padding:40px}
 
 /* ========== MERCADO / STORE ========== */
-.mercado{display:flex;flex-direction:column;height:100%;min-height:0}
-.store-tabs{display:flex;gap:10px;margin-bottom:22px}
+.mercado{display:flex;flex-direction:column;height:100%;min-height:0;gap:0}
+.store-tabs{display:flex;gap:10px;margin-bottom:22px;flex:0 0 auto}
 .store-tab{display:flex;align-items:center;gap:11px;height:48px;padding:0 22px;border-radius:9px;border:1px solid var(--line);
   background:var(--panel);cursor:pointer;font-family:var(--font-d);font-weight:700;font-size:20px;letter-spacing:.08em;color:var(--txt-3);transition:all .18s}
 .store-tab svg{width:21px;height:21px}
 .store-tab:hover{color:var(--txt)}
 .store-tab.on{background:var(--red);border-color:var(--red);color:#fff}
-.store-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;overflow:auto;align-content:start;padding-right:4px}
+.store-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-content:start;flex:1;min-height:0}
+
+/* ---- pagination ---- */
+.store-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding-top:20px;flex:0 0 auto}
+.sp-btn{width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  color:var(--txt-3);cursor:pointer;display:grid;place-items:center;transition:all .18s;flex:0 0 auto}
+.sp-btn:hover:not(:disabled){border-color:var(--line-strong);color:var(--txt)}
+.sp-btn:disabled{opacity:.3;cursor:default}
+.sp-dots{display:flex;align-items:center;gap:7px}
+.sp-dot{width:8px;height:8px;border-radius:50%;border:0;background:var(--txt-4);cursor:pointer;transition:all .18s;padding:0}
+.sp-dot.on{width:22px;border-radius:5px;background:var(--red)}
+.sp-dot:hover:not(.on){background:var(--txt-3)}
+.sp-label{font-family:var(--font-d);font-weight:700;font-size:18px;letter-spacing:.06em;color:var(--txt);min-width:52px;text-align:center}
+.sp-label span{color:var(--txt-3);font-weight:400}
 .store-item{position:relative;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--panel-solid);
   display:flex;flex-direction:column;transition:transform .18s,border-color .18s,box-shadow .18s}
 .store-item:hover{transform:translateY(-4px);border-color:var(--line-strong);box-shadow:0 22px 40px -24px rgba(0,0,0,.9)}
@@ -135,8 +148,13 @@
 .si-body .sn{font-family:var(--font-d);font-weight:700;font-size:22px;letter-spacing:.02em;color:#f1f4f9;line-height:1}
 .si-body .sm{font-weight:400;font-size:14px;color:var(--txt-3)}
 .si-buy{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
-.si-price{display:flex;align-items:center;gap:8px;font-family:var(--font-d);font-weight:700;font-size:23px;color:#fff}
+.si-price{display:flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:700;font-size:21px;color:#fff}
 .si-price i{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e08a,#caa341)}
+.si-price svg{color:#f3cf6b}
+.mk-funds{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.mk-funds-l{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.18em;color:var(--gold)}
+.mk-funds-v{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:800;font-size:32px;color:#fff;line-height:.85}
+.mk-funds-v svg{color:#f3cf6b}
 .si-btn{height:38px;padding:0 18px;border-radius:8px;border:0;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;
   font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.1em;transition:background .18s}
 .si-btn:hover{background:var(--red)}

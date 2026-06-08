@@ -100,6 +100,8 @@ export function SvgSymbols() {
         <symbol id="ic-stadium" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><ellipse cx="12" cy="11" rx="9" ry="5" /><path d="M3 11v3c0 2.8 4 5 9 5s9-2.2 9-5v-3" /><ellipse cx="12" cy="11" rx="3.6" ry="1.8" /></symbol>
         <symbol id="ic-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" /></symbol>
         <symbol id="ic-silhouette" viewBox="0 0 64 64"><circle cx="32" cy="24" r="13" fill="currentColor" /><path d="M8 60c2-15 14-22 24-22s22 7 24 22z" fill="currentColor" /></symbol>
+        <symbol id="ic-value" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M6 3h12l3 6-9 12L3 9z" /><path d="M3 9h18M9 3 6 9l6 12M15 3l3 6-6 12" /></symbol>
+        <symbol id="ic-funds" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2.5" y="6" width="19" height="12" rx="2" /><circle cx="12" cy="12" r="2.6" /><path d="M6 9v6M18 9v6" /></symbol>
 
         {/* Real Madrid (homage) */}
         <symbol id="crest-rma" viewBox="0 0 100 100">

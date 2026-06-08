@@ -33,7 +33,7 @@ export default async function LigasPage() {
     getSessionProfile(),
   ]);
 
-  const value = session.profile?.marketValue ?? 0;
+  const value = session.profile?.clubValue ?? 0;
   const currentIdx = currentLeagueIndex(leagues, value);
   const info = leagueProgress(leagues, value);
 
@@ -57,13 +57,15 @@ export default async function LigasPage() {
           </Link>
           <h2 style={{ marginTop: 10 }}>RUTA DE LIGAS</h2>
           <div className="sh-sub">
-            Sube tu valor de mercado para ascender. Cada liga desbloquea nuevos escudos, avatares y
+            Sube el valor de tu club para ascender. Cada liga desbloquea nuevos escudos, avatares y
             estadios en el Mercado.
           </div>
         </div>
         <div className="lg-hud">
-          <span className="lg-hud-l">TU VALOR DE MERCADO</span>
-          <span className="lg-hud-v">€{info.value}M</span>
+          <span className="lg-hud-l">VALOR DE TU CLUB</span>
+          <span className="lg-hud-v" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <Sym id="ic-value" width={20} height={20} /> €{info.value}M
+          </span>
           {info.next && (
             <span className="lg-hud-n">
               Próxima · {info.next.name} (€{info.next.minMarketValue}M)
