@@ -44,22 +44,27 @@
 .vcoin i{width:17px;height:17px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e08a,#caa341);flex:0 0 auto}
 .tm-tablewrap{flex:1;overflow-y:auto;overflow-x:hidden;margin-top:8px;border-top:1px solid var(--line)}
 table.tm-tbl{width:100%;border-collapse:collapse}
+/* CLUB · PRESIDENTE · PAÍS hug their content on the left; VALOR (right-aligned)
+   takes the remaining width, so no void opens up between CLUB and PRESIDENTE. */
+.tm-tbl th,.tm-tbl td{white-space:nowrap;padding-left:16px;padding-right:16px}
+.tm-tbl th:last-child,.tm-tbl td:last-child{width:100%}
 .tm-tbl thead th{position:sticky;top:0;background:var(--bg-0);font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.14em;
-  color:var(--txt-3);text-align:center;padding:16px 0;border-bottom:1px solid var(--line);z-index:2}
-.tm-tbl thead th.team{text-align:left;padding-left:14px}.tm-tbl thead th.pres{text-align:left}.tm-tbl thead th.val{text-align:right;padding-right:14px}
-.tm-tbl tbody td{padding:13px 0;font-size:21px;color:var(--txt);border-bottom:1px solid var(--line-soft);text-align:center}
+  color:var(--txt-3);text-align:center;padding-top:16px;padding-bottom:16px;border-bottom:1px solid var(--line);z-index:2}
+.tm-tbl thead th.team{text-align:left}.tm-tbl thead th.pres{text-align:left}.tm-tbl thead th.val{text-align:right}
+.tm-tbl tbody td{padding-top:13px;padding-bottom:13px;font-size:21px;color:var(--txt);border-bottom:1px solid var(--line-soft);text-align:center}
 .tm-tbl tbody td.pres{text-align:left;color:var(--txt-2);font-weight:500}
 .tm-tbl tbody td.ctry{font-family:var(--font-d);font-weight:600;letter-spacing:.06em;color:var(--txt-2)}
-.tm-tbl tbody td.val{text-align:right;padding-right:14px}
-.tm-tbl tbody td.val .vcoin{font-size:21px}
-.tm-tbl .tcell{display:flex;align-items:center;gap:14px;padding-left:8px}
+.tm-tbl tbody td.val{text-align:right}
+.tm-tbl .tcell{display:flex;align-items:center;gap:14px}
 .tm-tbl .tcell .pos{width:34px;font-family:var(--font-d);font-weight:700;font-size:22px;color:var(--txt-3);text-align:center;flex:0 0 auto}
 .tm-tbl .tcell .pos.top1{color:#f4d77e}.tm-tbl .tcell .pos.top2{color:#cdd4e0}.tm-tbl .tcell .pos.top3{color:#d9a06a}
 .tm-tbl .tcell .cr{width:38px;height:38px;flex:0 0 auto}
 .tm-tbl .tcell .cr svg,.tm-tbl .tcell .cr img,.tm-tbl .tcell .cr .avwrap{width:100%;height:100%;display:block;object-fit:contain}
 .tm-tbl tbody td.val .money{justify-content:flex-end}
 .tm-tbl .tcell b{font-family:var(--font-u);font-weight:600;font-size:22px;color:#f1f4f9}
-.tm-tbl tr.me td{background:linear-gradient(90deg,rgba(156,26,43,.22),rgba(156,26,43,.02))}
+/* "me" row: one continuous tint across the whole row (no per-cell seam) */
+.tm-tbl tr.me td{background:rgba(156,26,43,.15)}
+.tm-tbl tr.me td:first-child{box-shadow:inset 3px 0 0 var(--red)}
 .tm-tbl .you{font-family:var(--font-d);font-weight:700;font-size:12px;letter-spacing:.1em;color:#fff;background:var(--red);border-radius:20px;padding:2px 9px;margin-left:8px}
 
 /* ===== TORNEOS ===== */

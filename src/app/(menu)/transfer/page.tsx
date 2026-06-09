@@ -1,7 +1,7 @@
-import { CrestArt } from "@/components/svg";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
+import { ShieldArt } from "@/components/game-art";
 import { Money } from "@/components/Money";
-import { COUNTRY_LABEL } from "@/data/transfermarket";
+import { countryByCode } from "@/data/game-assets";
 import { getTransferRanking } from "@/actions/transfer";
 
 /** Transfermarket view — clubs ranked by market value, descending. */
@@ -49,7 +49,7 @@ export default async function TransferPage() {
                   <div className="tcell">
                     <span className={`pos${r.pos <= 3 ? ` top${r.pos}` : ""}`}>{r.pos}</span>
                     <span className="cr">
-                      {r.art ? <CollectibleGlyph c={r.art} /> : r.crest ? <CrestArt crest={r.crest} /> : null}
+                      {r.art ? <CollectibleGlyph c={r.art} /> : <ShieldArt id={null} />}
                     </span>
                     <b>{r.club}</b>
                   </div>
@@ -58,7 +58,7 @@ export default async function TransferPage() {
                   {r.president}
                   {r.me && <span className="you">TÚ</span>}
                 </td>
-                <td className="ctry">{COUNTRY_LABEL[r.country] ?? r.country.toUpperCase()}</td>
+                <td className="ctry">{countryByCode(r.country)?.name ?? r.country.toUpperCase()}</td>
                 <td className="val">
                   <Money euros={r.value} kind="value" />
                 </td>
