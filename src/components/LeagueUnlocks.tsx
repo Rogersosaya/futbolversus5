@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { FlagSvg, Sym } from "@/components/svg";
 import { CollectibleArt } from "@/components/CollectibleArt";
+import { Money, EUR_PER_MILLION } from "@/components/Money";
 import type { Collectible, CollectibleKind, Rarity } from "@/actions/catalog";
 
 type Groups = Record<CollectibleKind, Collectible[]>;
@@ -33,12 +34,10 @@ const CloseIcon = () => (
   </svg>
 );
 
-/** Price/value in millions of euros. */
-const Value = ({ amount }: { amount: number }) =>
+/** A collectible's cost in funds, or an "Inicial" tag when it is free. */
+const Price = ({ amount }: { amount: number }) =>
   amount > 0 ? (
-    <span className="cm-price">
-      <Sym id="ic-value" width={15} height={15} /> €{amount.toLocaleString("es")}M
-    </span>
+    <Money euros={amount * EUR_PER_MILLION} kind="funds" size="sm" />
   ) : (
     <span className="cm-price free">Inicial</span>
   );
@@ -139,7 +138,7 @@ export function LeagueUnlocks({
                     <CollectibleArt c={it} />
                     <div className="cm-item-body">
                       <span className="cm-name">{it.name}</span>
-                      <Value amount={it.price} />
+                      <Price amount={it.price} />
                     </div>
                   </div>
                 );

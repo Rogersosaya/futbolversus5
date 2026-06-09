@@ -9,6 +9,7 @@ import { ProfileSetupModal, type SetupOptions } from "@/components/ProfileSetupM
 import { AuthButton } from "@/components/AuthButton";
 import { ProfileProvider } from "@/components/ProfileContext";
 import { CollectibleGlyph, type CollectibleArtData } from "@/components/CollectibleArt";
+import { Money, EUR_PER_MILLION } from "@/components/Money";
 import { countryByCode } from "@/data/game-assets";
 import {
   getLeagueCollectibles,
@@ -42,7 +43,7 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
     !profile?.shieldId;
 
   const displayName = profile?.presidentName ?? "Presidente";
-  const budget: number = profile?.budget ?? 0;
+  const clubFunds = profile?.clubFunds ?? 0;
 
   // Derive the player's current league from club value (Liga 1 at value 0).
   const leagues = await getLeagues();
@@ -105,10 +106,8 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
         </div>
 
         <Topbar>
-          <span>Temporada 2026</span>
-          <span className="coin">
-            <i /> {budget.toLocaleString("es")}
-          </span>
+          <Money euros={clubValue * EUR_PER_MILLION} kind="value" />
+          <Money euros={clubFunds * EUR_PER_MILLION} kind="funds" />
           <span className="who">
             {displayName}{" "}
             <u className="av av-img" aria-hidden="true">

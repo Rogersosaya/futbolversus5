@@ -1,9 +1,13 @@
 import { CrestArt } from "@/components/svg";
-import { COUNTRY_LABEL, TRANSFER_RANKING } from "@/data/transfermarket";
+import { CollectibleGlyph } from "@/components/CollectibleArt";
+import { Money } from "@/components/Money";
+import { COUNTRY_LABEL } from "@/data/transfermarket";
+import { getTransferRanking } from "@/actions/transfer";
 
-/** Transfermarket view — clubs ranked by market value. */
-export default function TransferPage() {
-  const me = TRANSFER_RANKING.find((r) => r.me)!;
+/** Transfermarket view — clubs ranked by market value, descending. */
+export default async function TransferPage() {
+  const ranking = await getTransferRanking();
+  const me = ranking.find((r) => r.me);
 
   return (
     <div className="tm">
@@ -14,19 +18,19 @@ export default function TransferPage() {
             El ranking de los clubes más valiosos. Tu valor sube con cada victoria, racha y trofeo.
           </div>
         </div>
-        <div className="tm-mine">
-          <span className="tm-mine-rank">#{me.pos}</span>
-          <div className="tm-mine-d">
-            <span className="l">TU CLUB</span>
-            <span className="n">{me.club}</span>
+        {me && (
+          <div className="tm-mine">
+            <span className="tm-mine-rank">#{me.pos}</span>
+            <div className="tm-mine-d">
+              <span className="l">TU CLUB</span>
+              <span className="n">{me.club}</span>
+            </div>
+            <div className="tm-mine-v">
+              <span className="l">VALOR</span>
+              <Money euros={me.value} kind="value" />
+            </div>
           </div>
-          <div className="tm-mine-v">
-            <span className="l">VALOR</span>
-            <span className="vcoin">
-              <i /> {me.value}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
       <div className="tm-tablewrap">
         <table className="tm-tbl">
@@ -39,13 +43,13 @@ export default function TransferPage() {
             </tr>
           </thead>
           <tbody>
-            {TRANSFER_RANKING.map((r) => (
-              <tr key={r.pos} className={r.me ? "me" : undefined}>
+            {ranking.map((r) => (
+              <tr key={`${r.pos}-${r.club}`} className={r.me ? "me" : undefined}>
                 <td>
                   <div className="tcell">
                     <span className={`pos${r.pos <= 3 ? ` top${r.pos}` : ""}`}>{r.pos}</span>
                     <span className="cr">
-                      <CrestArt crest={r.crest} />
+                      {r.art ? <CollectibleGlyph c={r.art} /> : r.crest ? <CrestArt crest={r.crest} /> : null}
                     </span>
                     <b>{r.club}</b>
                   </div>
@@ -54,11 +58,9 @@ export default function TransferPage() {
                   {r.president}
                   {r.me && <span className="you">TÚ</span>}
                 </td>
-                <td className="ctry">{COUNTRY_LABEL[r.country]}</td>
+                <td className="ctry">{COUNTRY_LABEL[r.country] ?? r.country.toUpperCase()}</td>
                 <td className="val">
-                  <span className="vcoin">
-                    <i /> {r.value}
-                  </span>
+                  <Money euros={r.value} kind="value" />
                 </td>
               </tr>
             ))}

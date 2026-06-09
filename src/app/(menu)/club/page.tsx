@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FlagSvg, Sym } from "@/components/svg";
 import { AvatarArt, ShieldArt } from "@/components/game-art";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
+import { Money, EUR_PER_MILLION } from "@/components/Money";
 import { useProfile } from "@/components/ProfileContext";
 import {
   CLUB_KPIS,
@@ -51,9 +52,12 @@ export default function ClubPage() {
         <div className="club-kpis">
           {CLUB_KPIS.map((kpi) => (
             <div key={kpi.label} className="kpi">
-              <span className={`kv${kpi.coin ? " vcoin" : ""}`}>
-                {kpi.coin && <i />}
-                {kpi.value}
+              <span className="kv">
+                {kpi.coin ? (
+                  <Money euros={profile.clubValue * EUR_PER_MILLION} kind="value" size="lg" />
+                ) : (
+                  kpi.value
+                )}
               </span>
               <span className="kl">{kpi.label}</span>
             </div>

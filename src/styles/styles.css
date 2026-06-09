@@ -105,6 +105,17 @@ body{background:#000;color:var(--txt);font-family:var(--font-u);overflow:hidden;
 .topbar .meta{display:flex;align-items:center;gap:30px;font-weight:400;font-size:20px;color:var(--txt-2)}
 .topbar .meta .coin{display:flex;align-items:center;gap:9px;color:#f0f3f8}
 .topbar .meta .coin i{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e08a,#caa341);display:inline-block}
+
+/* ===== Money: the standard monetary display (value vs funds) ===== */
+.money{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-d);font-weight:700;line-height:1;white-space:nowrap}
+.money svg{width:1.05em;height:1.05em;flex:0 0 auto}
+.money-n{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.money-value{color:var(--gold)}
+.money-funds{color:var(--ok)}
+.money-sm{font-size:16px}
+.money-md{font-size:21px}
+.money-lg{font-size:33px;font-weight:800;letter-spacing:.005em}
+.topbar .meta .money{gap:9px}
 .topbar .meta .who{display:flex;align-items:center;gap:11px}
 .topbar .meta .who u{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2a3346,#161c28);border:1px solid var(--line);text-decoration:none}
 .topbar .meta .who u.av-img{overflow:hidden;display:inline-flex}

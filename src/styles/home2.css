@@ -56,6 +56,8 @@ table.tm-tbl{width:100%;border-collapse:collapse}
 .tm-tbl .tcell .pos{width:34px;font-family:var(--font-d);font-weight:700;font-size:22px;color:var(--txt-3);text-align:center;flex:0 0 auto}
 .tm-tbl .tcell .pos.top1{color:#f4d77e}.tm-tbl .tcell .pos.top2{color:#cdd4e0}.tm-tbl .tcell .pos.top3{color:#d9a06a}
 .tm-tbl .tcell .cr{width:38px;height:38px;flex:0 0 auto}
+.tm-tbl .tcell .cr svg,.tm-tbl .tcell .cr img,.tm-tbl .tcell .cr .avwrap{width:100%;height:100%;display:block;object-fit:contain}
+.tm-tbl tbody td.val .money{justify-content:flex-end}
 .tm-tbl .tcell b{font-family:var(--font-u);font-weight:600;font-size:22px;color:#f1f4f9}
 .tm-tbl tr.me td{background:linear-gradient(90deg,rgba(156,26,43,.22),rgba(156,26,43,.02))}
 .tm-tbl .you{font-family:var(--font-d);font-weight:700;font-size:12px;letter-spacing:.1em;color:#fff;background:var(--red);border-radius:20px;padding:2px 9px;margin-left:8px}

@@ -5,17 +5,11 @@ import { useRouter } from "next/navigation";
 
 import { FlagSvg, Sym } from "@/components/svg";
 import { CollectibleArt } from "@/components/CollectibleArt";
+import { Money, EUR_PER_MILLION } from "@/components/Money";
 import { buyCollectible } from "@/app/actions/mercado";
 import type { Collectible, CollectibleKind, Rarity } from "@/actions/catalog";
 
 const PAGE_SIZE = 8;
-
-/** Funds/price are in millions of euros. */
-const FundsValue = ({ amount }: { amount: number }) => (
-  <>
-    <Sym id="ic-funds" width={15} height={15} /> €{amount.toLocaleString("es")}M
-  </>
-);
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -123,9 +117,7 @@ export function MercadoView({
             {it.leagueName} · {it.leagueCountry}
           </div>
           <div className="si-buy">
-            <div className="si-price">
-              <FundsValue amount={it.price} />
-            </div>
+            <Money euros={it.price * EUR_PER_MILLION} kind="funds" size="sm" />
             {isOwned ? (
               <button className="si-btn owned">
                 <CheckIcon /> TUYO
@@ -160,9 +152,7 @@ export function MercadoView({
         </div>
         <div className="mk-funds">
           <span className="mk-funds-l">FONDOS DEL CLUB</span>
-          <span className="mk-funds-v">
-            <FundsValue amount={funds} />
-          </span>
+          <Money euros={funds * EUR_PER_MILLION} kind="funds" size="lg" />
         </div>
       </div>
 

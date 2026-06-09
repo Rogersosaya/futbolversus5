@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Sym } from "@/components/svg";
+import { Money, EUR_PER_MILLION, formatEuros } from "@/components/Money";
 import { LeagueUnlocks } from "@/components/LeagueUnlocks";
 import {
   getLeagues,
@@ -62,12 +62,10 @@ export default async function LigasPage() {
         </div>
         <div className="lg-hud">
           <span className="lg-hud-l">VALOR DE TU CLUB</span>
-          <span className="lg-hud-v" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-            <Sym id="ic-value" width={20} height={20} /> €{info.value}M
-          </span>
+          <Money euros={info.value * EUR_PER_MILLION} kind="value" size="lg" />
           {info.next && (
             <span className="lg-hud-n">
-              Próxima · {info.next.name} (€{info.next.minMarketValue}M)
+              Próxima · {info.next.name} · {formatEuros(info.next.minMarketValue * EUR_PER_MILLION)}
             </span>
           )}
         </div>
@@ -76,7 +74,8 @@ export default async function LigasPage() {
       <div className="road">
         {leagues.map((l, i) => {
           const st: StepState = i < currentIdx ? "done" : i === currentIdx ? "current" : "locked";
-          const reqTxt = i === 0 ? "LIGA INICIAL" : `DESDE €${l.minMarketValue}M DE VALOR`;
+          const reqTxt =
+            i === 0 ? "LIGA INICIAL" : `DESDE ${formatEuros(l.minMarketValue * EUR_PER_MILLION)} DE VALOR`;
           const g = groups.get(l.id) ?? { CREST: [], AVATAR: [], STADIUM: [] };
 
           return (
@@ -105,7 +104,7 @@ export default async function LigasPage() {
                   ) : st === "current" ? (
                     <span className="lg-status current">EN CURSO</span>
                   ) : (
-                    <span className="lg-status locked">€{l.minMarketValue}M</span>
+                    <span className="lg-status locked">{formatEuros(l.minMarketValue * EUR_PER_MILLION)}</span>
                   )}
                 </div>
                 <LeagueUnlocks
@@ -120,7 +119,8 @@ export default async function LigasPage() {
                       <i style={{ width: `${info.pct}%` }} />
                     </div>
                     <div className="lg-prog-tx">
-                      Te faltan <b>€{info.need}M</b> para ascender a <b>{info.next.name}</b>
+                      Te faltan <b>{formatEuros(info.need * EUR_PER_MILLION)}</b> para ascender a{" "}
+                      <b>{info.next.name}</b>
                     </div>
                   </div>
                 )}
