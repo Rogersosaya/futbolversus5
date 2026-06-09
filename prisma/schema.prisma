@@ -84,6 +84,10 @@ model Profile {
   leagueId String? @map("league_id")
   league   League? @relation(fields: [leagueId], references: [id], onDelete: SetNull)
 
+  /// Every collectible this player owns (their "colección"). The avatarId /
+  /// stadiumId / shieldId above point to the one of each kind currently active.
+  owned OwnedCollectible[]
+
   @@index([leagueId])
   @@map("profiles")
 }
@@ -116,7 +120,27 @@ model Collectible {
   leagueId String @map("league_id")
   league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 
+  owners OwnedCollectible[]
+
   @@index([leagueId])
   @@index([kind])
   @@map("collectibles")
+}
+
+/// Ownership ledger: which collectibles a player has acquired (bought in the
+/// Mercado or granted as free starter picks during profile setup). Separate
+/// from "equipped" — a player owns many of each kind but only one is active
+/// (Profile.avatarId / stadiumId / shieldId).
+model OwnedCollectible {
+  id            String   @id @default(cuid())
+  profileId     String   @map("profile_id") @db.Uuid
+  collectibleId String   @map("collectible_id")
+  acquiredAt    DateTime @default(now()) @map("acquired_at")
+
+  profile     Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  collectible Collectible @relation(fields: [collectibleId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, collectibleId])
+  @@index([profileId])
+  @@map("owned_collectibles")
 }

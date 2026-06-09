@@ -17,17 +17,28 @@ export async function updateProfile(data: {
 
   if (!user) throw new Error("Not authenticated");
 
-  await prisma.profile.update({
-    where: { id: user.id },
-    data: {
-      presidentName: data.presidentName,
-      country: data.country,
-      avatarId: data.avatarId,
-      stadiumId: data.stadiumId,
-      shieldId: data.shieldId,
-      updatedAt: new Date(),
-    },
-  });
+  // First-login setup: the three starter picks become active AND owned (free
+  // onboarding gift — no funds are charged). They seed the player's collection.
+  await prisma.$transaction([
+    prisma.ownedCollectible.createMany({
+      data: [data.avatarId, data.stadiumId, data.shieldId].map((collectibleId) => ({
+        profileId: user.id,
+        collectibleId,
+      })),
+      skipDuplicates: true,
+    }),
+    prisma.profile.update({
+      where: { id: user.id },
+      data: {
+        presidentName: data.presidentName,
+        country: data.country,
+        avatarId: data.avatarId,
+        stadiumId: data.stadiumId,
+        shieldId: data.shieldId,
+        updatedAt: new Date(),
+      },
+    }),
+  ]);
 }
 
 export async function signOut() {

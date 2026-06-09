@@ -1,5 +1,5 @@
 import { getLeagues, getCollectibles, currentLeagueIndex } from "@/actions/catalog";
-import { getSessionProfile } from "@/actions/profile";
+import { getSessionProfile, getOwnedCollectibleIds } from "@/actions/profile";
 
 import { MercadoView } from "./MercadoView";
 
@@ -16,18 +16,19 @@ export default async function MercadoPage() {
   const currentIdx = currentLeagueIndex(leagues, value);
   const currentTier = leagues[currentIdx]?.tier ?? 1;
 
-  // A pick the player already wears (matched by id) is shown as owned.
-  const owned = new Set(
-    [profile?.shieldId, profile?.avatarId, profile?.stadiumId].filter(
-      (v): v is string => !!v,
-    ),
+  // Owned = the player's whole collection (ledger). Active = the one of each
+  // kind currently in use, shown as "EN USO".
+  const ownedIds = session.userId ? await getOwnedCollectibleIds(session.userId) : [];
+  const activeIds = [profile?.shieldId, profile?.avatarId, profile?.stadiumId].filter(
+    (v): v is string => !!v,
   );
 
   return (
     <MercadoView
       items={collectibles}
       currentTier={currentTier}
-      ownedIds={[...owned]}
+      ownedIds={ownedIds}
+      activeIds={activeIds}
       funds={profile?.clubFunds ?? 0}
     />
   );

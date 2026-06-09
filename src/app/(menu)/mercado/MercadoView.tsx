@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { FlagSvg, Sym } from "@/components/svg";
 import { CollectibleArt } from "@/components/CollectibleArt";
 import { Money, EUR_PER_MILLION } from "@/components/Money";
-import { buyCollectible } from "@/app/actions/mercado";
+import { buyCollectible, equipCollectible } from "@/app/actions/mercado";
 import type { Collectible, CollectibleKind, Rarity } from "@/actions/catalog";
 
 const PAGE_SIZE = 8;
@@ -52,11 +52,13 @@ export function MercadoView({
   items,
   currentTier,
   ownedIds,
+  activeIds,
   funds,
 }: {
   items: Collectible[];
   currentTier: number;
   ownedIds: string[];
+  activeIds: string[];
   funds: number;
 }) {
   const router = useRouter();
@@ -65,6 +67,7 @@ export function MercadoView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const owned = useMemo(() => new Set(ownedIds), [ownedIds]);
+  const active = useMemo(() => new Set(activeIds), [activeIds]);
 
   const visible = useMemo(() => items.filter((it) => it.kind === tab), [items, tab]);
   const totalPages = Math.ceil(visible.length / PAGE_SIZE);
@@ -84,18 +87,28 @@ export function MercadoView({
     });
   };
 
+  const equip = (id: string) => {
+    setPendingId(id);
+    startTransition(async () => {
+      await equipCollectible(id);
+      router.refresh();
+      setPendingId(null);
+    });
+  };
+
   const renderItem = (it: Collectible) => {
     const isOwned = owned.has(it.id);
+    const isActive = active.has(it.id);
     const locked = !isOwned && it.leagueTier > currentTier;
     const affordable = funds >= it.price;
-    const buying = isPending && pendingId === it.id;
+    const pending = isPending && pendingId === it.id;
     const rareClass = RARITY_CLASS[it.rarity];
     const rareLabel = RARITY_LABEL[it.rarity];
 
     return (
       <div
         key={it.id}
-        className={`store-item${isOwned ? " owned" : ""}${locked ? " locked" : ""}`}
+        className={`store-item${isOwned ? " owned" : ""}${isActive ? " active" : ""}${locked ? " locked" : ""}`}
       >
         {rareClass && rareLabel && <span className={`badge-rare ${rareClass}`}>{rareLabel}</span>}
         <CollectibleArt c={it} />
@@ -118,21 +131,25 @@ export function MercadoView({
           </div>
           <div className="si-buy">
             <Money euros={it.price * EUR_PER_MILLION} kind="funds" size="sm" />
-            {isOwned ? (
-              <button className="si-btn owned">
-                <CheckIcon /> TUYO
-              </button>
-            ) : locked ? (
+            {locked ? (
               <button className="si-btn lock">
                 <LockIcon strokeWidth={2.4} /> BLOQUEADO
+              </button>
+            ) : isOwned && isActive ? (
+              <button className="si-btn owned" disabled>
+                <CheckIcon /> EN USO
+              </button>
+            ) : isOwned ? (
+              <button className="si-btn equip" onClick={() => equip(it.id)} disabled={pending}>
+                {pending ? "..." : "USAR"}
               </button>
             ) : !affordable ? (
               <button className="si-btn lock" disabled>
                 SIN FONDOS
               </button>
             ) : (
-              <button className="si-btn" onClick={() => buy(it.id)} disabled={buying}>
-                {buying ? "..." : "COMPRAR"}
+              <button className="si-btn" onClick={() => buy(it.id)} disabled={pending}>
+                {pending ? "..." : "COMPRAR"}
               </button>
             )}
           </div>

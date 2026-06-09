@@ -24,3 +24,13 @@ export async function getSessionProfile(): Promise<{
   const profile = await prisma.profile.findUnique({ where: { id: userId } });
   return { userId, profile };
 }
+
+/** Ids of every collectible the player owns (their collection, not just the
+ * active ones). Used by the Mercado to mark items as owned/equippable. */
+export async function getOwnedCollectibleIds(userId: string): Promise<string[]> {
+  const rows = await prisma.ownedCollectible.findMany({
+    where: { profileId: userId },
+    select: { collectibleId: true },
+  });
+  return rows.map((r) => r.collectibleId);
+}
