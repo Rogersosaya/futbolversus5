@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { Sym } from "@/components/svg";
+import { LeagueUnlocks } from "@/components/LeagueUnlocks";
 import {
   getLeagues,
   getCollectibles,
   currentLeagueIndex,
   leagueProgress,
+  type Collectible,
   type CollectibleKind,
 } from "@/actions/catalog";
 import { getSessionProfile } from "@/actions/profile";
@@ -37,13 +39,10 @@ export default async function LigasPage() {
   const currentIdx = currentLeagueIndex(leagues, value);
   const info = leagueProgress(leagues, value);
 
-  // Per-league unlock counts by kind.
-  const counts = new Map<string, Record<CollectibleKind, number>>();
-  for (const l of leagues) counts.set(l.id, { CREST: 0, AVATAR: 0, STADIUM: 0 });
-  for (const c of collectibles) {
-    const byKind = counts.get(c.leagueId);
-    if (byKind) byKind[c.kind] += 1;
-  }
+  // Per-league collectibles, grouped by kind, for the unlock buttons + viewer.
+  const groups = new Map<string, Record<CollectibleKind, Collectible[]>>();
+  for (const l of leagues) groups.set(l.id, { CREST: [], AVATAR: [], STADIUM: [] });
+  for (const c of collectibles) groups.get(c.leagueId)?.[c.kind].push(c);
 
   return (
     <div className="ligas">
@@ -78,7 +77,7 @@ export default async function LigasPage() {
         {leagues.map((l, i) => {
           const st: StepState = i < currentIdx ? "done" : i === currentIdx ? "current" : "locked";
           const reqTxt = i === 0 ? "LIGA INICIAL" : `DESDE €${l.minMarketValue}M DE VALOR`;
-          const c = counts.get(l.id) ?? { CREST: 0, AVATAR: 0, STADIUM: 0 };
+          const g = groups.get(l.id) ?? { CREST: [], AVATAR: [], STADIUM: [] };
 
           return (
             <div key={l.id} className={`lg-step ${st}`}>
@@ -109,17 +108,12 @@ export default async function LigasPage() {
                     <span className="lg-status locked">€{l.minMarketValue}M</span>
                   )}
                 </div>
-                <div className="lg-unlocks">
-                  <span className="lg-unlock">
-                    <Sym id="ic-shield" /> {c.CREST} escudos
-                  </span>
-                  <span className="lg-unlock">
-                    <Sym id="ic-user" /> {c.AVATAR} avatares
-                  </span>
-                  <span className="lg-unlock">
-                    <Sym id="ic-stadium" /> {c.STADIUM} estadios
-                  </span>
-                </div>
+                <LeagueUnlocks
+                  leagueName={l.name}
+                  leagueCountry={l.country}
+                  countryCode={l.countryCode}
+                  groups={g}
+                />
                 {st === "current" && info.next && (
                   <div className="lg-prog">
                     <div className="lg-prog-bar">
