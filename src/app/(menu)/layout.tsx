@@ -106,8 +106,14 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
         </div>
 
         <Topbar>
-          <Money euros={clubValue * EUR_PER_MILLION} kind="value" />
-          <Money euros={clubFunds * EUR_PER_MILLION} kind="funds" />
+          <span className="stat">
+            <span className="stat-label">Valor del club</span>
+            <Money euros={clubValue * EUR_PER_MILLION} kind="value" />
+          </span>
+          <span className="stat">
+            <span className="stat-label">Fondos del club</span>
+            <Money euros={clubFunds * EUR_PER_MILLION} kind="funds" />
+          </span>
           <span className="who">
             {displayName}{" "}
             <u className="av av-img" aria-hidden="true">

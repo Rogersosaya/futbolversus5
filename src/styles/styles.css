@@ -116,6 +116,8 @@ body{background:#000;color:var(--txt);font-family:var(--font-u);overflow:hidden;
 .money-md{font-size:21px}
 .money-lg{font-size:33px;font-weight:800;letter-spacing:.005em}
 .topbar .meta .money{gap:9px}
+.topbar .meta .stat{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.topbar .meta .stat .stat-label{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;opacity:.5;line-height:1;color:var(--txt-2)}
 .topbar .meta .who{display:flex;align-items:center;gap:11px}
 .topbar .meta .who u{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2a3346,#161c28);border:1px solid var(--line);text-decoration:none}
 .topbar .meta .who u.av-img{overflow:hidden;display:inline-flex}
