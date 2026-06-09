@@ -21,6 +21,10 @@ export interface LiveProfile {
   avatarId: string | null;
   stadiumId: string | null;
   shieldId: string | null;
+  /** Display name of the chosen club crest (the player's club). */
+  clubName: string | null;
+  /** Display name of the chosen home stadium. */
+  stadiumName: string | null;
   /** Resolved art for the chosen cosmetics (null when none/legacy value). */
   avatarArt: CollectibleArtData | null;
   stadiumArt: CollectibleArtData | null;
@@ -40,6 +44,8 @@ const ProfileCtx = createContext<LiveProfile>({
   avatarId: null,
   stadiumId: null,
   shieldId: null,
+  clubName: null,
+  stadiumName: null,
   avatarArt: null,
   stadiumArt: null,
   shieldArt: null,

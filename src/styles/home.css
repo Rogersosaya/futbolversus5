@@ -23,37 +23,73 @@
 
 /* ========== LIGA VIEW ========== */
 .liga{position:relative;height:100%;border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.liga .liga-bg{position:absolute;inset:0;background-size:cover;background-position:center 30%}
-.liga .liga-grad{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,9,15,.94) 0%,rgba(6,9,15,.7) 38%,rgba(6,9,15,.25) 70%,rgba(6,9,15,.55) 100%)}
-.liga .liga-top{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,15,.55),transparent 22%)}
-.liga-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:40px 46px}
+.liga .liga-bg{position:absolute;inset:0;background-size:cover;background-position:center 28%;
+  transform:scale(1.05);transform-origin:center;animation:ligaPan 34s ease-in-out infinite alternate}
+@keyframes ligaPan{from{transform:scale(1.05) translateX(-1.4%)}to{transform:scale(1.09) translateX(1.4%)}}
+.liga .liga-bg--art{display:grid;place-items:stretch;background:radial-gradient(120% 90% at 50% 10%,#162032,#0a0e18);transform:none;animation:none}
+.liga .liga-bg--art>*{width:100%;height:100%;display:block}
+.liga .liga-bg--art svg,.liga .liga-bg--art img{width:100%;height:100%;display:block;object-fit:cover;opacity:.92}
+/* legibility wash: heavy at the bottom-left where the club identity sits */
+.liga .liga-scrim{position:absolute;inset:0;
+  background:
+    linear-gradient(0deg,rgba(5,8,14,.96) 0%,rgba(5,8,14,.74) 24%,rgba(5,8,14,.14) 54%,transparent 72%),
+    linear-gradient(90deg,rgba(5,8,14,.82) 0%,rgba(5,8,14,.34) 32%,transparent 60%),
+    linear-gradient(180deg,rgba(5,8,14,.72) 0%,transparent 20%)}
+.liga-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:space-between;
+  padding:clamp(26px,3.4vw,44px) clamp(28px,3.6vw,50px)}
+
+/* top row: league route (left) + home-stadium badge (right) */
+.liga-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.liga-venue{display:flex;align-items:center;gap:13px;height:64px;padding:0 22px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(11,15,23,.72);backdrop-filter:blur(6px)}
+.lv-ic{width:30px;height:30px;color:var(--gold);flex:0 0 auto}
+.lv-ic svg{width:100%;height:100%;display:block}
+.lv-tx{display:flex;flex-direction:column;gap:4px;text-align:right;min-width:0}
+.lv-tx small{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.16em;color:var(--gold)}
+.lv-tx b{font-family:var(--font-d);font-weight:700;font-size:20px;letter-spacing:.03em;color:#f2f5fa;line-height:.9;white-space:nowrap}
 .liga-tag{display:inline-flex;align-items:center;gap:11px;height:36px;padding:0 16px;align-self:flex-start;
   border:1px solid rgba(232,207,142,.4);border-radius:40px;color:var(--gold);font-family:var(--font-d);font-weight:600;font-size:15px;letter-spacing:.2em}
 .liga-tag svg{width:17px;height:17px}
-.liga-hero{display:flex;align-items:flex-end;gap:30px}
-.liga-avatar{width:300px;height:330px;flex:0 0 auto;position:relative;filter:drop-shadow(0 24px 30px rgba(0,0,0,.6))}
-.liga-avatar svg{width:100%;height:100%;display:block}
-.liga-copy{padding-bottom:18px}
-.liga-copy h2{font-family:var(--font-d);font-weight:800;font-size:58px;line-height:.94;color:#fff;letter-spacing:.01em}
-.liga-copy h2 em{color:var(--gold);font-style:normal}
-.liga-copy .sub{font-weight:400;font-size:21px;color:var(--txt-2);margin-top:12px;max-width:440px;line-height:1.45}
-.liga-row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+/* bottom row: club identity (left) + match call-to-action (right) */
+.liga-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:clamp(28px,4vw,56px)}
+.liga-club{display:flex;align-items:flex-end;gap:clamp(20px,2.4vw,34px);min-width:0}
+.liga-crest{width:clamp(112px,11vw,168px);height:clamp(112px,11vw,168px);flex:0 0 auto;
+  filter:drop-shadow(0 18px 32px rgba(0,0,0,.65))}
+.liga-crest>*{display:block;width:100%;height:100%}
+.liga-crest svg,.liga-crest img{width:100%;height:100%;display:block;object-fit:contain}
+.liga-club-tx{display:flex;flex-direction:column;min-width:0;padding-bottom:6px}
+.liga-eyebrow{font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.28em;color:var(--gold);margin-bottom:10px}
+.liga-club-name{font-family:var(--font-d);font-weight:800;font-size:clamp(44px,5.4vw,82px);line-height:.9;
+  letter-spacing:-.012em;color:#fff;text-wrap:balance}
 
-/* user identity chip */
-.user-card{display:flex;align-items:center;gap:18px;padding:16px 22px 16px 16px;border-radius:12px;
-  background:rgba(13,17,25,.78);border:1px solid var(--line);backdrop-filter:blur(6px)}
-.user-card .ua{width:62px;height:62px;border-radius:50%;flex:0 0 auto;overflow:hidden;border:2px solid var(--gold);
+.liga-pres{display:flex;align-items:center;gap:14px;margin-top:18px}
+.lp-av{width:52px;height:52px;border-radius:50%;flex:0 0 auto;overflow:hidden;border:2px solid var(--gold);
   background:radial-gradient(circle at 50% 35%,#2a3346,#10141d)}
-.user-card .ua svg{width:100%;height:100%;display:block}
-.user-card .ud{display:flex;flex-direction:column;gap:7px;min-width:0}
-.user-card .un{font-family:var(--font-d);font-weight:700;font-size:28px;letter-spacing:.04em;color:#fff;line-height:.9}
-.user-card .um{display:flex;align-items:center;gap:14px}
-.user-card .um .bit{display:flex;align-items:center;gap:7px;font-weight:500;font-size:17px;color:var(--txt-2);white-space:nowrap}
-.user-card .um .bit .fl{width:24px;height:16px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.14)}
-.user-card .um .bit .fl svg{display:block;width:100%;height:100%}
-.user-card .um .bit .cr{width:22px;height:22px;display:inline-flex;overflow:hidden;border-radius:3px}
-.user-card .um .bit .cr svg{width:100%;height:100%;display:block}
-.user-card .um .sep{width:1px;height:18px;background:var(--line)}
+.lp-av>*{display:block;width:100%;height:100%}
+.lp-av svg{width:100%;height:100%;display:block}
+.lp-av .avwrap img,.lp-av img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;display:block}
+.lp-tx{display:flex;flex-direction:column;gap:2px;line-height:1;min-width:0}
+.lp-tx small{font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.2em;color:var(--txt-3)}
+.lp-tx b{font-family:var(--font-d);font-weight:700;font-size:24px;letter-spacing:.02em;color:#fff;line-height:.92;white-space:nowrap}
+.lp-flag{width:30px;height:20px;border-radius:3px;overflow:hidden;flex:0 0 auto;align-self:center;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+.lp-flag svg{display:block;width:100%;height:100%}
+
+.liga-actions{display:flex;flex-direction:column;align-items:flex-end;gap:20px;flex:0 0 auto;max-width:340px}
+.liga-sub{font-weight:400;font-size:17px;color:var(--txt-2);line-height:1.5;text-align:right;text-wrap:pretty}
+
+@media (prefers-reduced-motion:reduce){.liga .liga-bg{animation:none;transform:scale(1.05)}}
+@media (max-width:1180px){
+  .liga-hero{flex-direction:column;align-items:flex-start;gap:26px}
+  .liga-actions{align-items:flex-start;max-width:560px}
+  .liga-sub{text-align:left}
+}
+@media (max-width:720px){
+  .liga-head{flex-direction:column}
+  .liga-venue{align-self:flex-start;height:56px}
+  .lv-tx{text-align:left}
+  .liga-club{gap:18px}
+}
 
 .btn-play{display:inline-flex;align-items:center;gap:14px;height:64px;padding:0 40px;border-radius:10px;border:0;cursor:pointer;
   background:linear-gradient(180deg,#e01536,#b30d28);color:#fff;font-family:var(--font-d);font-weight:800;font-size:27px;letter-spacing:.14em;

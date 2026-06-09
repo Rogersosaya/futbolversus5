@@ -68,9 +68,12 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
     profile?.shieldId,
   ]);
   const byId = new Map(chosen.map((c) => [c.id, c]));
-  const avatarArt = toArt(profile?.avatarId ? byId.get(profile.avatarId) : undefined);
-  const stadiumArt = toArt(profile?.stadiumId ? byId.get(profile.stadiumId) : undefined);
-  const shieldArt = toArt(profile?.shieldId ? byId.get(profile.shieldId) : undefined);
+  const avatarColl = profile?.avatarId ? byId.get(profile.avatarId) : undefined;
+  const stadiumColl = profile?.stadiumId ? byId.get(profile.stadiumId) : undefined;
+  const shieldColl = profile?.shieldId ? byId.get(profile.shieldId) : undefined;
+  const avatarArt = toArt(avatarColl);
+  const stadiumArt = toArt(stadiumColl);
+  const shieldArt = toArt(shieldColl);
 
   const liveProfile: LiveProfile = {
     presidentName: profile?.presidentName ?? "Presidente",
@@ -79,6 +82,8 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
     avatarId: profile?.avatarId ?? null,
     stadiumId: profile?.stadiumId ?? null,
     shieldId: profile?.shieldId ?? null,
+    clubName: shieldColl?.name ?? null,
+    stadiumName: stadiumColl?.name ?? null,
     avatarArt,
     stadiumArt,
     shieldArt,
