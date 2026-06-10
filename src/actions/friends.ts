@@ -32,7 +32,7 @@ const winPctOf = (wins: number, played: number) =>
   played > 0 ? Math.round((wins / played) * 100) : 0;
 
 /** Resolve a batch of profiles to player cards, sharing one crest lookup. */
-async function toCards(profiles: Profile[]): Promise<PlayerCard[]> {
+export async function toCards(profiles: Profile[]): Promise<PlayerCard[]> {
   const shieldIds = profiles.map((p) => p.shieldId).filter((v): v is string => !!v);
   const crests = await getCollectiblesByIds(shieldIds);
   const crestById = new Map(crests.map((c) => [c.id, c]));
@@ -133,13 +133,6 @@ export async function getFriendsOverview(userId: string): Promise<{
   return { friends, incoming, outgoing };
 }
 
-/** Stable display invite code derived from the profile id (display-only for
- * now; the invite-to-play flow is not implemented yet). */
-export function inviteCodeFor(userId: string): string {
-  const slug = userId.replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase();
-  return `${slug.slice(0, 3)}-${slug.slice(3)}`;
-}
-
 /** The current player's own card (for the matchmaking "TÚ" side). */
 export async function getSelfCard(userId: string): Promise<PlayerCard | null> {
   const profile = await prisma.profile.findUnique({ where: { id: userId } });
@@ -148,25 +141,20 @@ export async function getSelfCard(userId: string): Promise<PlayerCard | null> {
   return card ?? null;
 }
 
-/** The "TÚ" side of matchmaking: full card + resolved avatar art. */
+/** A lobby-side card: full player card + resolved avatar art. */
 export interface SelfMatchCard extends PlayerCard {
   avatarArt: CollectibleArtData | null;
 }
 
-/** Everything the matchmaking screen needs: the player's own card (with avatar
- * art), their friends, and a shareable invite code. */
-export async function getMatchmakingData(userId: string): Promise<{
-  me: SelfMatchCard | null;
-  friends: PlayerCard[];
-  inviteCode: string;
-} | null> {
+/** A player's full lobby card (card + avatar art). Used for both seats of a
+ * match room ("TÚ" and "RIVAL"). */
+export async function getMatchCard(userId: string): Promise<SelfMatchCard | null> {
   const profile = await prisma.profile.findUnique({ where: { id: userId } });
   if (!profile) return null;
 
-  const [[card], avatarColls, friends] = await Promise.all([
+  const [[card], avatarColls] = await Promise.all([
     toCards([profile]),
     getCollectiblesByIds([profile.avatarId]),
-    getFriends(userId),
   ]);
   if (!card) return null;
 
@@ -183,5 +171,5 @@ export async function getMatchmakingData(userId: string): Promise<{
       }
     : null;
 
-  return { me: { ...card, avatarArt }, friends, inviteCode: inviteCodeFor(userId) };
+  return { ...card, avatarArt };
 }

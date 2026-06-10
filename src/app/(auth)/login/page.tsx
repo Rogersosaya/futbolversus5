@@ -1,13 +1,28 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
 type Tab = "login" | "register";
 
+/** Internal-only post-login destination (e.g. /jugar/amistoso/ABC123). */
+function safeNext(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
 export default function LoginPage() {
+  // useSearchParams needs a Suspense boundary in the App Router.
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const nextUrl = safeNext(useSearchParams().get("next"));
   const [tab, setTab] = useState<Tab>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +47,7 @@ export default function LoginPage() {
           setFeedback({ type: "error", msg: translateError(error.message) });
           return;
         }
-        router.push("/");
+        router.push(nextUrl);
         router.refresh();
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password });
@@ -42,7 +57,7 @@ export default function LoginPage() {
         }
         if (data.session) {
           // Email confirmation disabled — logged in immediately
-          router.push("/");
+          router.push(nextUrl);
           router.refresh();
         } else {
           setFeedback({ type: "success", msg: "Revisa tu correo y confirma tu cuenta para ingresar." });

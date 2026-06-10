@@ -1,21 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { Icon } from "@/components/svg";
 import { MiniGameModal } from "@/components/MiniGameModal";
+import { createFriendlyRoom } from "@/app/actions/matchroom";
 import type { Game } from "@/generated/prisma/client";
 
 export function AmistosoView({ games }: { games: Game[] }) {
-  const router = useRouter();
   const [selected, setSelected] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
+  // JUGAR creates a persistent match room server-side; the action itself
+  // redirects to its lobby at /jugar/amistoso/<code>.
   const play = (g: Game) => {
-    const params = new URLSearchParams({ juego: String(g.id) });
-    if (difficulty) params.set("dif", difficulty);
-    router.push(`/jugar/amistoso?${params.toString()}`);
+    startTransition(async () => {
+      await createFriendlyRoom(g.id, difficulty);
+    });
   };
 
   const game = selected !== null ? games.find((g) => g.id === selected) ?? null : null;
@@ -87,8 +89,8 @@ export function AmistosoView({ games }: { games: Game[] }) {
                 </div>
               )}
               <div className="dt-foot">
-                <button className="btn-play" onClick={() => play(game)}>
-                  JUGAR <Icon id="arr" />
+                <button className="btn-play" disabled={isPending} onClick={() => play(game)}>
+                  {isPending ? "CREANDO SALA…" : <>JUGAR <Icon id="arr" /></>}
                 </button>
               </div>
             </div>

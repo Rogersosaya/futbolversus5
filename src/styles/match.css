@@ -1,0 +1,59 @@
+/* FUTBOL VERSUS — match rooms: floating invite toasts, join screen, room states */
+
+/* ===== floating invite notifications (bottom-right, global) ===== */
+.mi-toasts{position:fixed;right:22px;bottom:22px;z-index:90;display:flex;flex-direction:column-reverse;gap:12px;max-width:min(420px,calc(100vw - 44px))}
+.mi-card{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;border-radius:13px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(24,29,40,.96),rgba(13,17,25,.96));box-shadow:0 24px 50px -24px rgba(0,0,0,.85);
+  animation:miIn .32s cubic-bezier(.16,.9,.3,1)}
+.mi-card.in{border-color:rgba(232,207,142,.45)}
+@keyframes miIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+
+.mi-crest{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center}
+.mi-crest svg,.mi-crest img{width:38px;height:38px;object-fit:contain}
+
+.mi-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.2}
+.mi-tx small{display:flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:600;font-size:11px;letter-spacing:.18em;color:var(--txt-3)}
+.mi-card.in .mi-tx small{color:var(--gold)}
+.mi-tx b{font-family:var(--font-d);font-weight:700;font-size:19px;letter-spacing:.02em;color:#f3f5f9;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi-tx>span{font-family:var(--font-u);font-weight:400;font-size:14px;color:var(--txt-2)}
+.mi-err{display:block;font-style:normal;font-size:13px;color:#ff7d92;margin-top:2px}
+
+.mi-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(232,207,142,.8);animation:lgpulse 1.4s ease-in-out infinite}
+
+.mi-acts{display:flex;gap:8px;flex:0 0 auto}
+.mi-acts button{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;cursor:pointer;
+  font-size:16px;font-weight:700;line-height:1;transition:background .18s,color .18s,border-color .18s}
+.mi-acts button:disabled{opacity:.45;cursor:default}
+.mi-yes{border:1px solid rgba(70,194,117,.55);background:rgba(70,194,117,.16);color:#8fe7af}
+.mi-yes:hover:not(:disabled){background:var(--ok);color:#06210f}
+.mi-no{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--txt-2)}
+.mi-no:hover:not(:disabled){border-color:rgba(200,16,46,.6);background:rgba(200,16,46,.18);color:#fff}
+
+/* ===== lobby top: room code chip ===== */
+.room-code-chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:40px;border:1px solid var(--line);
+  background:rgba(12,16,24,.7);font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.16em;color:var(--txt-3)}
+.room-code-chip b{color:var(--gold);font-weight:700;letter-spacing:.12em}
+
+/* ===== invite-link join screen ===== */
+.join-wrap{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:72px;padding:88px 60px 0}
+.join-cta{width:340px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.join-decline{border:0;background:transparent;cursor:pointer;font-family:var(--font-u);font-weight:500;font-size:16px;color:var(--txt-3);
+  text-decoration:underline;text-underline-offset:4px;transition:color .18s}
+.join-decline:hover{color:var(--txt)}
+.join-error{font-size:15px;color:#ff7d92;max-width:300px;line-height:1.4}
+
+/* ===== room unavailable / closed message ===== */
+.room-msg{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+.room-msg-cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* ===== reduced motion ===== */
+@media (prefers-reduced-motion: reduce){
+  .mi-card{animation:none}
+  .mi-dot{animation:none}
+  .lobby.shaking{animation:none}
+  .vs-slam .slam-flash,.vs-slam .slam-gash,.vs-slam .slam-ring{display:none}
+  .vs-slam .slam-vs{animation:slamVSReduced 1.05s ease-out forwards}
+  @keyframes slamVSReduced{0%{opacity:0}15%{opacity:1}82%{opacity:1}100%{opacity:0}}
+  .lb-team.in{animation:none}
+}

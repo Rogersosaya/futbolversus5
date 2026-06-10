@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Barlow_Semi_Condensed } from "next/font/google";
 
+import { PresenceProvider } from "@/components/realtime/presence";
+import { MatchInviteToasts } from "@/components/MatchInviteToasts";
+import { getAuthUserId } from "@/actions/profile";
+
 import "./globals.css";
 import "@/styles/styles.css";
 import "@/styles/home.css";
@@ -10,6 +14,7 @@ import "@/styles/lobby.css";
 import "@/styles/game.css";
 import "@/styles/auth.css";
 import "@/styles/profile-setup.css";
+import "@/styles/match.css";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
@@ -30,13 +35,20 @@ export const metadata: Metadata = {
   description: "FUTBOL VERSUS — juego de fútbol por preguntas y rachas.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Global presence: a signed-in user counts as "online" on every route, not
+  // just specific screens. Match-invite toasts are global for the same reason.
+  const userId = await getAuthUserId();
+
   return (
     <html lang="es" className={`${barlowCondensed.variable} ${barlowSemi.variable}`}>
       <body>
-        {children}
+        <PresenceProvider userId={userId}>
+          {children}
+          {userId && <MatchInviteToasts userId={userId} />}
+        </PresenceProvider>
       </body>
     </html>
   );

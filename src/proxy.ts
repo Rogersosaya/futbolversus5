@@ -39,12 +39,25 @@ export async function proxy(request: NextRequest) {
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Come back to the original destination after signing in (e.g. an invite
+    // link to a match room). Only internal paths are accepted.
+    const next = pathname + request.nextUrl.search;
+    url.search = "";
+    if (next !== "/") url.searchParams.set("next", next);
     return NextResponse.redirect(url);
   }
 
   if (user && isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const next = request.nextUrl.searchParams.get("next");
+    url.search = "";
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      const [nextPath, nextQuery] = next.split("?");
+      url.pathname = nextPath;
+      if (nextQuery) url.search = nextQuery;
+    } else {
+      url.pathname = "/";
+    }
     return NextResponse.redirect(url);
   }
 

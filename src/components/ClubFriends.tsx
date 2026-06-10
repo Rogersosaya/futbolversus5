@@ -6,7 +6,7 @@ import { FlagSvg, Sym } from "@/components/svg";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { ShieldArt } from "@/components/game-art";
 import { useProfile } from "@/components/ProfileContext";
-import { usePresence } from "@/components/realtime/usePresence";
+import { useOnline } from "@/components/realtime/presence";
 import { createClient } from "@/lib/supabase-browser";
 import {
   searchPlayers,
@@ -38,7 +38,7 @@ function Crest({ art }: { art: PlayerCard["art"] }) {
 
 export function ClubFriends() {
   const { id: userId } = useProfile();
-  const online = usePresence(userId);
+  const online = useOnline();
 
   const [tab, setTab] = useState<Tab>("amigos");
   const [data, setData] = useState<Overview>(EMPTY);

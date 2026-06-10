@@ -13,6 +13,8 @@ model Game {
   description           String
   imageUrl              String
   availableDifficulties String[]
+
+  matchRooms MatchRoom[]
 }
 
 /// The three kinds of unlockable cosmetic ("card", à la Clash Royale).
@@ -100,6 +102,12 @@ model Profile {
   friendshipsA     Friendship[]    @relation("FriendshipsA")
   friendshipsB     Friendship[]    @relation("FriendshipsB")
 
+  /// Friendly-match rooms and invites.
+  hostedRooms         MatchRoom[]   @relation("HostedRooms")
+  joinedRooms         MatchRoom[]   @relation("JoinedRooms")
+  sentMatchInvites    MatchInvite[] @relation("SentMatchInvites")
+  receivedMatchInvites MatchInvite[] @relation("ReceivedMatchInvites")
+
   @@index([leagueId])
   @@map("profiles")
 }
@@ -155,6 +163,77 @@ model OwnedCollectible {
   @@unique([profileId, collectibleId])
   @@index([profileId])
   @@map("owned_collectibles")
+}
+
+/// Lifecycle of a friendly-match room (lobby).
+enum MatchRoomStatus {
+  OPEN // waiting for a rival (seat free)
+  READY // both seats taken — match found
+  CLOSED // abandoned by the host / superseded
+
+  @@map("match_room_status")
+}
+
+/// A persistent friendly-match room. Exactly two seats: the host (creator) and
+/// one guest. Created when the host presses JUGAR on /amistoso; the short
+/// `code` is the URL slug (/jugar/amistoso/ABC123) and the invite-link token.
+/// Access is restricted to host + guest; a third player can only take the
+/// guest seat while it is free (first click wins, claimed atomically).
+model MatchRoom {
+  id         String          @id @default(cuid())
+  /// Short shareable code, e.g. "K7M2QF". Unique across all rooms.
+  code       String          @unique
+  status     MatchRoomStatus @default(OPEN)
+  /// Minigame + difficulty chosen by the host on /amistoso.
+  gameId     Int?            @map("game_id")
+  difficulty String?
+  hostId     String          @map("host_id") @db.Uuid
+  guestId    String?         @map("guest_id") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @default(now()) @map("updated_at")
+
+  game  Game?    @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  host  Profile  @relation("HostedRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  guest Profile? @relation("JoinedRooms", fields: [guestId], references: [id], onDelete: SetNull)
+
+  invites MatchInvite[]
+
+  @@index([hostId, status])
+  @@index([guestId])
+  @@map("match_rooms")
+}
+
+/// Lifecycle of a match invite (room owner → friend).
+enum MatchInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED // receiver pressed ✗
+  CANCELLED // sender pressed X
+  EXPIRED // seat taken by someone else / room closed
+
+  @@map("match_invite_status")
+}
+
+/// An invitation to join a match room, sent by the host to a friend. Both
+/// sides render it as a floating notification in real time (Postgres Changes).
+/// One row per (room, receiver); re-inviting revives a declined row.
+model MatchInvite {
+  id          String            @id @default(cuid())
+  roomId      String            @map("room_id")
+  senderId    String            @map("sender_id") @db.Uuid
+  receiverId  String            @map("receiver_id") @db.Uuid
+  status      MatchInviteStatus @default(PENDING)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  respondedAt DateTime?         @map("responded_at")
+
+  room     MatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender   Profile   @relation("SentMatchInvites", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver Profile   @relation("ReceivedMatchInvites", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
+  @@map("match_invites")
 }
 
 /// Lifecycle of a friend request between two presidents.

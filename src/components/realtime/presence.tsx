@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 
 import { createClient } from "@/lib/supabase-browser";
 
 /**
- * Global online presence. Joins a shared "online" channel keyed by the user's
- * id, tracks the current user as present, and returns the set of online user
- * ids. Used to show friends' "En línea / Desconectado" state in real time.
- *
- * Pass `null` when there's no authenticated user (returns an empty set and
- * skips the subscription).
+ * Global online presence. The provider (mounted once in the root layout) joins
+ * a shared "online" Realtime channel keyed by the user's id and tracks the
+ * current user as present for as long as they have an authenticated session —
+ * on ANY route of the app. Consumers read the live set of online user ids via
+ * `useOnline()`.
  */
-export function usePresence(userId: string | null): Set<string> {
+const EMPTY: Set<string> = new Set();
+
+const PresenceContext = createContext<Set<string>>(EMPTY);
+
+export function PresenceProvider({
+  userId,
+  children,
+}: {
+  userId: string | null;
+  children: ReactNode;
+}) {
   const [online, setOnline] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
@@ -44,5 +53,11 @@ export function usePresence(userId: string | null): Set<string> {
     };
   }, [userId]);
 
-  return online;
+  // Derive instead of resetting state in the effect: signed out = nobody online.
+  return <PresenceContext value={userId ? online : EMPTY}>{children}</PresenceContext>;
+}
+
+/** The set of user ids currently online anywhere in the app. */
+export function useOnline(): Set<string> {
+  return use(PresenceContext);
 }
