@@ -14,6 +14,8 @@ export interface CurrentLeague {
 }
 
 export interface LiveProfile {
+  /** Supabase auth user id (null when signed out). */
+  id: string | null;
   presidentName: string;
   /** 2-letter ISO country code stored in DB, e.g. "ar" */
   country: string;
@@ -38,6 +40,7 @@ export interface LiveProfile {
 }
 
 const ProfileCtx = createContext<LiveProfile>({
+  id: null,
   presidentName: "Presidente",
   country: "",
   countryName: "",

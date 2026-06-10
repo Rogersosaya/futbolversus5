@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FlagSvg, Sym } from "@/components/svg";
 import { AvatarArt, ShieldArt } from "@/components/game-art";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
+import { ClubFriends } from "@/components/ClubFriends";
 import { Money, EUR_PER_MILLION } from "@/components/Money";
 import { useProfile } from "@/components/ProfileContext";
 import {
@@ -99,6 +100,8 @@ export default function ClubPage() {
             );
           })}
         </div>
+
+        <ClubFriends />
       </div>
     </div>
   );

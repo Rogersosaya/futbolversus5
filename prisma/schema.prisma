@@ -78,6 +78,12 @@ model Profile {
   /// Spendable budget (€M) used to buy collectibles in the Mercado.
   clubFunds     Int      @default(0) @map("club_funds")
   budget        Int      @default(0)
+  /// Career stats shown on the player card (lobby / club / friend cards).
+  /// Updated later when the match system exists; start at sensible defaults.
+  level         Int      @default(1)
+  power         Int      @default(50)
+  wins          Int      @default(0)
+  played        Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @map("updated_at")
 
@@ -87,6 +93,12 @@ model Profile {
   /// Every collectible this player owns (their "colección"). The avatarId /
   /// stadiumId / shieldId above point to the one of each kind currently active.
   owned OwnedCollectible[]
+
+  /// Friendships and friend requests (social graph).
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+  friendshipsA     Friendship[]    @relation("FriendshipsA")
+  friendshipsB     Friendship[]    @relation("FriendshipsB")
 
   @@index([leagueId])
   @@map("profiles")
@@ -143,4 +155,48 @@ model OwnedCollectible {
   @@unique([profileId, collectibleId])
   @@index([profileId])
   @@map("owned_collectibles")
+}
+
+/// Lifecycle of a friend request between two presidents.
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+
+  @@map("friend_request_status")
+}
+
+/// A pending/resolved friend request. One direction (sender → receiver).
+/// Becomes a Friendship row once accepted.
+model FriendRequest {
+  id          String              @id @default(cuid())
+  senderId    String              @map("sender_id") @db.Uuid
+  receiverId  String              @map("receiver_id") @db.Uuid
+  status      FriendRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  respondedAt DateTime?           @map("responded_at")
+
+  sender   Profile @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver Profile @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@map("friend_requests")
+}
+
+/// An accepted friendship, stored once with a canonical ordering
+/// (userAId < userBId) so a pair never appears twice.
+model Friendship {
+  id        String   @id @default(cuid())
+  userAId   String   @map("user_a_id") @db.Uuid
+  userBId   String   @map("user_b_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userA Profile @relation("FriendshipsA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB Profile @relation("FriendshipsB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@map("friendships")
 }

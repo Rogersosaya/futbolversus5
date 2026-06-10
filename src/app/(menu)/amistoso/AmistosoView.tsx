@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Icon } from "@/components/svg";
-import { useOverlay } from "@/components/overlay-context";
 import { MiniGameModal } from "@/components/MiniGameModal";
 import type { Game } from "@/generated/prisma/client";
 
 export function AmistosoView({ games }: { games: Game[] }) {
-  const { openLobby } = useOverlay();
+  const router = useRouter();
   const [selected, setSelected] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<string | null>(null);
+
+  const play = (g: Game) => {
+    const params = new URLSearchParams({ juego: String(g.id) });
+    if (difficulty) params.set("dif", difficulty);
+    router.push(`/jugar/amistoso?${params.toString()}`);
+  };
 
   const game = selected !== null ? games.find((g) => g.id === selected) ?? null : null;
 
@@ -81,7 +87,7 @@ export function AmistosoView({ games }: { games: Game[] }) {
                 </div>
               )}
               <div className="dt-foot">
-                <button className="btn-play" onClick={() => openLobby("amistoso")}>
+                <button className="btn-play" onClick={() => play(game)}>
                   JUGAR <Icon id="arr" />
                 </button>
               </div>

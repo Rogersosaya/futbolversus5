@@ -85,8 +85,13 @@
 .fr-st.on{color:var(--ok)}.fr-st.idle{color:var(--gold)}.fr-st.off{color:var(--txt-4)}
 .fr-inv{height:34px;padding:0 15px;border-radius:7px;border:1px solid rgba(200,16,46,.5);background:rgba(200,16,46,.14);color:#fff;cursor:pointer;
   font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.1em;transition:background .18s}
-.fr-inv:hover{background:var(--red)}
+.fr-inv:hover:not(:disabled){background:var(--red)}
 .fr-inv:disabled{opacity:.4;cursor:default;border-color:var(--line);background:transparent;color:var(--txt-4)}
+/* crest-as-avatar in the friends list (real club crest instead of initials) */
+.fr-av.crest{background:transparent;border-radius:0}
+.fr-av.crest svg,.fr-av.crest img{width:34px;height:34px;object-fit:contain}
+.friends-empty{padding:18px 14px;border:1px dashed var(--line);border-radius:9px;color:var(--txt-3);font-size:15px;line-height:1.4}
+.friends-empty b{color:var(--txt-2)}
 
 /* foot switcher (top-right) */
 .state-switch{display:flex;gap:6px;padding:6px;border-radius:40px;background:rgba(12,16,24,.8);border:1px solid var(--line)}

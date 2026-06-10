@@ -7,6 +7,7 @@ import { HomeNav } from "@/components/HomeNav";
 import { ViewFrame } from "@/components/ViewFrame";
 import { ProfileSetupModal, type SetupOptions } from "@/components/ProfileSetupModal";
 import { AuthButton } from "@/components/AuthButton";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { ProfileProvider } from "@/components/ProfileContext";
 import { CollectibleGlyph, type CollectibleArtData } from "@/components/CollectibleArt";
 import { Money, EUR_PER_MILLION } from "@/components/Money";
@@ -19,6 +20,7 @@ import {
   type Collectible,
 } from "@/actions/catalog";
 import { getSessionProfile } from "@/actions/profile";
+import { getIncomingRequests } from "@/actions/friends";
 import type { LiveProfile } from "@/components/ProfileContext";
 
 const toArt = (c: Collectible | undefined): CollectibleArtData | null =>
@@ -44,6 +46,9 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
 
   const displayName = profile?.presidentName ?? "Presidente";
   const clubFunds = profile?.clubFunds ?? 0;
+
+  // Pending friend requests for the notification bell (live-updated client-side).
+  const incomingRequests = userId ? await getIncomingRequests(userId) : [];
 
   // Derive the player's current league from club value (Liga 1 at value 0).
   const leagues = await getLeagues();
@@ -77,6 +82,7 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
   const shieldArt = toArt(shieldColl);
 
   const liveProfile: LiveProfile = {
+    id: userId,
     presidentName: profile?.presidentName ?? "Presidente",
     country: profile?.country ?? "",
     countryName: countryByCode(profile?.country ?? "")?.name ?? "",
@@ -120,6 +126,7 @@ export default async function MenuLayout({ children }: { children: ReactNode }) 
               {avatarArt && <CollectibleGlyph c={avatarArt} />}
             </u>
           </span>
+          {userId && <NotificationsBell userId={userId} initialIncoming={incomingRequests} />}
           <AuthButton loggedIn={!!userId} />
         </Topbar>
 
