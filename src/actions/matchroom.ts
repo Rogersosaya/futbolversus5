@@ -1,14 +1,17 @@
-// Match-room reads via Prisma. Plain async functions for Server Components —
-// auth comes from Supabase cookies upstream. Mutations live in
+// Match-room reads + core room logic via Prisma. Plain async functions for
+// Server Components — auth comes from Supabase cookies upstream. NOT a
+// "use server" file: nothing here is a public endpoint, so `claimGuestSeat`
+// can safely take a trusted userId. Client-callable wrappers live in
 // src/app/actions/matchroom.ts ("use server").
 import { prisma } from "@/lib/prisma";
+import { notifyInvites, notifyRooms } from "@/lib/realtime-server";
 import {
   getFriends,
   getMatchCard,
   type PlayerCard,
   type SelfMatchCard,
 } from "@/actions/friends";
-import type { MatchRoom, MatchRoomStatus } from "@/generated/prisma/client";
+import type { MatchRoom, MatchRoomStatus, Prisma } from "@/generated/prisma/client";
 
 export type RoomRole = "host" | "guest";
 
@@ -35,16 +38,127 @@ export interface RoomLobbyData {
   invitedIds: string[];
 }
 
-/** What a non-member sees when opening an invite link to an open room. */
-export interface RoomJoinData {
-  code: string;
-  gameName: string | null;
-  difficulty: string | null;
-  host: SelfMatchCard;
+export interface ActionResult {
+  ok: boolean;
+  error?: string;
 }
 
 export async function getRoomByCode(code: string): Promise<MatchRoom | null> {
   return prisma.matchRoom.findUnique({ where: { code } });
+}
+
+/** Pending-invite receivers + room ids of every active room the user hosts,
+ * and the rooms where they sit as guest. Used to notify everyone affected
+ * before the user abandons/closes their current rooms. */
+export async function activeRoomFootprint(userId: string) {
+  const [hostedInvites, hostedRooms, guestRooms] = await Promise.all([
+    prisma.matchInvite.findMany({
+      where: { status: "PENDING", room: { hostId: userId, status: { in: ["OPEN", "READY"] } } },
+      select: { receiverId: true, roomId: true },
+    }),
+    prisma.matchRoom.findMany({
+      where: { hostId: userId, status: { in: ["OPEN", "READY"] } },
+      select: { id: true },
+    }),
+    prisma.matchRoom.findMany({
+      where: { guestId: userId, status: "READY" },
+      select: { id: true },
+    }),
+  ]);
+  return {
+    roomIds: [...hostedRooms.map((r) => r.id), ...guestRooms.map((r) => r.id)],
+    receiverIds: hostedInvites.map((i) => i.receiverId),
+  };
+}
+
+/** Close every active room the user hosts (cancelling its pending invites) and
+ * vacate any guest seat they occupy. Keeps each player in at most one room. */
+export async function leaveActiveRooms(tx: Prisma.TransactionClient, userId: string) {
+  const now = new Date();
+  await tx.matchInvite.updateMany({
+    where: { status: "PENDING", room: { hostId: userId, status: { in: ["OPEN", "READY"] } } },
+    data: { status: "CANCELLED", respondedAt: now },
+  });
+  await tx.matchRoom.updateMany({
+    where: { hostId: userId, status: { in: ["OPEN", "READY"] } },
+    data: { status: "CLOSED", updatedAt: now },
+  });
+  await tx.matchRoom.updateMany({
+    where: { guestId: userId, status: "READY" },
+    data: { guestId: null, status: "OPEN", updatedAt: now },
+  });
+}
+
+/**
+ * Claim the guest seat of an open room for `userId` (a TRUSTED id resolved
+ * server-side — this module is not a public action endpoint). Atomic: the
+ * first player to run this wins the seat; everyone else gets an error.
+ * Resolves the room's pending invites (mine → ACCEPTED, others → EXPIRED),
+ * closes any room the joiner was hosting, and pings every affected client
+ * over Realtime Broadcast. Used by the room page to auto-join a visitor who
+ * opens an invite link, and by the invite-accept action.
+ */
+export async function claimGuestSeat(code: string, userId: string): Promise<ActionResult> {
+  const room = await prisma.matchRoom.findUnique({ where: { code } });
+  if (!room || room.status === "CLOSED") {
+    return { ok: false, error: "Esta sala ya no está disponible." };
+  }
+  if (room.hostId === userId || room.guestId === userId) return { ok: true }; // already in
+
+  // Who must hear about this change (fetched up-front; cheap selects).
+  const [roomInvites, footprint] = await Promise.all([
+    prisma.matchInvite.findMany({
+      where: { roomId: room.id, status: "PENDING" },
+      select: { receiverId: true },
+    }),
+    activeRoomFootprint(userId),
+  ]);
+
+  const now = new Date();
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Leave my previous rooms FIRST. Order matters: this also vacates any
+      // guest seat I hold, so running it after the claim below would undo the
+      // claim itself (the room would silently flip back to OPEN with no
+      // guest). Before the claim I hold no seat in the target room, so it
+      // can't be touched. If the claim then fails, the whole tx rolls back
+      // and my previous room survives untouched.
+      await leaveActiveRooms(tx, userId);
+
+      // Atomic seat claim: only succeeds while the seat is still free.
+      const claimed = await tx.matchRoom.updateMany({
+        where: { id: room.id, status: "OPEN", guestId: null },
+        data: { guestId: userId, status: "READY", updatedAt: now },
+      });
+      if (claimed.count === 0) throw new Error("SEAT_TAKEN");
+
+      // Resolve this room's invites: mine accepted, the rest expired.
+      await tx.matchInvite.updateMany({
+        where: { roomId: room.id, receiverId: userId, status: "PENDING" },
+        data: { status: "ACCEPTED", respondedAt: now },
+      });
+      await tx.matchInvite.updateMany({
+        where: { roomId: room.id, status: "PENDING" },
+        data: { status: "EXPIRED", respondedAt: now },
+      });
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "SEAT_TAKEN") {
+      return { ok: false, error: "Otro presidente tomó el lugar. Sala completa." };
+    }
+    throw e;
+  }
+
+  await Promise.all([
+    notifyRooms([room.id, ...footprint.roomIds]),
+    notifyInvites([
+      userId,
+      room.hostId,
+      ...roomInvites.map((i) => i.receiverId),
+      ...footprint.receiverIds,
+    ]),
+  ]);
+  return { ok: true };
 }
 
 async function gameNameOf(room: MatchRoom): Promise<string | null> {
@@ -101,12 +215,3 @@ export async function getRoomLobbyData(
   };
 }
 
-/** Join-screen data for a visitor while the guest seat is free. */
-export async function getRoomJoinData(room: MatchRoom): Promise<RoomJoinData | null> {
-  const [host, gameName] = await Promise.all([
-    getMatchCard(room.hostId),
-    gameNameOf(room),
-  ]);
-  if (!host) return null;
-  return { code: room.code, gameName, difficulty: room.difficulty, host };
-}

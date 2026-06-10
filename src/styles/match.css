@@ -35,14 +35,6 @@
   background:rgba(12,16,24,.7);font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.16em;color:var(--txt-3)}
 .room-code-chip b{color:var(--gold);font-weight:700;letter-spacing:.12em}
 
-/* ===== invite-link join screen ===== */
-.join-wrap{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:72px;padding:88px 60px 0}
-.join-cta{width:340px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
-.join-decline{border:0;background:transparent;cursor:pointer;font-family:var(--font-u);font-weight:500;font-size:16px;color:var(--txt-3);
-  text-decoration:underline;text-underline-offset:4px;transition:color .18s}
-.join-decline:hover{color:var(--txt)}
-.join-error{font-size:15px;color:#ff7d92;max-width:300px;line-height:1.4}
-
 /* ===== room unavailable / closed message ===== */
 .room-msg{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
 .room-msg-cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}

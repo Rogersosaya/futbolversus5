@@ -1,17 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { createSSRClient } from "@/lib/supabase-server";
+import { notifyInvites, notifyRooms } from "@/lib/realtime-server";
+import {
+  activeRoomFootprint,
+  claimGuestSeat,
+  leaveActiveRooms,
+  type ActionResult,
+} from "@/actions/matchroom";
 import { toCards, getMatchCard, type PlayerCard, type SelfMatchCard } from "@/actions/friends";
-import type { Prisma } from "@/generated/prisma/client";
-
-export interface ActionResult {
-  ok: boolean;
-  error?: string;
-}
 
 /** One floating invite notification (either direction). */
 export interface MatchInviteToast {
@@ -44,24 +44,6 @@ async function requireUser(): Promise<string | null> {
   return user?.id ?? null;
 }
 
-/** Close every active room the user hosts (cancelling its pending invites) and
- * vacate any guest seat they occupy. Keeps each player in at most one room. */
-async function leaveActiveRooms(tx: Prisma.TransactionClient, userId: string) {
-  const now = new Date();
-  await tx.matchInvite.updateMany({
-    where: { status: "PENDING", room: { hostId: userId, status: { in: ["OPEN", "READY"] } } },
-    data: { status: "CANCELLED", respondedAt: now },
-  });
-  await tx.matchRoom.updateMany({
-    where: { hostId: userId, status: { in: ["OPEN", "READY"] } },
-    data: { status: "CLOSED", updatedAt: now },
-  });
-  await tx.matchRoom.updateMany({
-    where: { guestId: userId, status: "READY" },
-    data: { guestId: null, status: "OPEN", updatedAt: now },
-  });
-}
-
 /**
  * Create a persistent friendly-match room (host seat = current user) and go to
  * its lobby at /jugar/amistoso/<code>. Any previous active room of the user is
@@ -74,9 +56,14 @@ export async function createFriendlyRoom(
   const userId = await requireUser();
   if (!userId) redirect("/login");
 
+  const footprint = await activeRoomFootprint(userId);
   await prisma.$transaction(async (tx) => {
     await leaveActiveRooms(tx, userId);
   });
+  await Promise.all([
+    notifyRooms(footprint.roomIds),
+    notifyInvites([userId, ...footprint.receiverIds]),
+  ]);
 
   // Retry on the (unlikely) code collision instead of failing the click.
   let code = generateRoomCode();
@@ -95,60 +82,11 @@ export async function createFriendlyRoom(
   redirect(`/jugar/amistoso/${code}`);
 }
 
-/**
- * Claim the guest seat of an open room — the invite-link flow. Atomic: the
- * first player to run this wins the seat; everyone else gets an error. Also
- * resolves the room's pending invites (mine → ACCEPTED, others → EXPIRED).
- */
+/** Client-callable wrapper of the seat claim (invite-toast accept path). */
 export async function joinRoomByCode(code: string): Promise<ActionResult> {
   const userId = await requireUser();
   if (!userId) return { ok: false, error: "No autenticado" };
-
-  const room = await prisma.matchRoom.findUnique({ where: { code } });
-  if (!room || room.status === "CLOSED") {
-    return { ok: false, error: "Esta sala ya no está disponible." };
-  }
-  if (room.hostId === userId || room.guestId === userId) return { ok: true }; // already in
-
-  const now = new Date();
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Atomic seat claim: only succeeds while the seat is still free.
-      const claimed = await tx.matchRoom.updateMany({
-        where: { id: room.id, status: "OPEN", guestId: null },
-        data: { guestId: userId, status: "READY", updatedAt: now },
-      });
-      if (claimed.count === 0) throw new Error("SEAT_TAKEN");
-
-      // Leaving any open room I was hosting (its invites die with it).
-      await tx.matchInvite.updateMany({
-        where: { status: "PENDING", room: { hostId: userId, status: "OPEN" } },
-        data: { status: "CANCELLED", respondedAt: now },
-      });
-      await tx.matchRoom.updateMany({
-        where: { hostId: userId, status: "OPEN" },
-        data: { status: "CLOSED", updatedAt: now },
-      });
-
-      // Resolve this room's invites: mine accepted, the rest expired.
-      await tx.matchInvite.updateMany({
-        where: { roomId: room.id, receiverId: userId, status: "PENDING" },
-        data: { status: "ACCEPTED", respondedAt: now },
-      });
-      await tx.matchInvite.updateMany({
-        where: { roomId: room.id, status: "PENDING" },
-        data: { status: "EXPIRED", respondedAt: now },
-      });
-    });
-  } catch (e) {
-    if (e instanceof Error && e.message === "SEAT_TAKEN") {
-      return { ok: false, error: "Otro presidente tomó el lugar. Sala completa." };
-    }
-    throw e;
-  }
-
-  revalidatePath(`/jugar/amistoso/${code}`);
-  return { ok: true };
+  return claimGuestSeat(code, userId);
 }
 
 /**
@@ -164,6 +102,10 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
 
   const now = new Date();
   if (room.hostId === userId) {
+    const pendingInvites = await prisma.matchInvite.findMany({
+      where: { roomId: room.id, status: "PENDING" },
+      select: { receiverId: true },
+    });
     await prisma.$transaction([
       prisma.matchInvite.updateMany({
         where: { roomId: room.id, status: "PENDING" },
@@ -174,14 +116,18 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
         data: { status: "CLOSED", updatedAt: now },
       }),
     ]);
+    await Promise.all([
+      notifyRooms([room.id]),
+      notifyInvites([userId, ...pendingInvites.map((i) => i.receiverId)]),
+    ]);
   } else if (room.guestId === userId) {
     await prisma.matchRoom.update({
       where: { id: room.id },
       data: { guestId: null, status: "OPEN", updatedAt: now },
     });
+    await notifyRooms([room.id]);
   }
 
-  revalidatePath(`/jugar/amistoso/${code}`);
   return { ok: true };
 }
 
@@ -213,6 +159,8 @@ export async function sendMatchInvite(
     create: { roomId: room.id, senderId: userId, receiverId },
     update: { status: "PENDING", respondedAt: null, createdAt: new Date() },
   });
+
+  await Promise.all([notifyInvites([userId, receiverId]), notifyRooms([room.id])]);
   return { ok: true };
 }
 
@@ -228,6 +176,10 @@ export async function cancelMatchInvite(inviteId: string): Promise<ActionResult>
       where: { id: inviteId },
       data: { status: "CANCELLED", respondedAt: new Date() },
     });
+    await Promise.all([
+      notifyInvites([invite.senderId, invite.receiverId]),
+      notifyRooms([invite.roomId]),
+    ]);
   }
   return { ok: true };
 }
@@ -260,16 +212,21 @@ export async function respondMatchInvite(
       where: { id: inviteId },
       data: { status: "DECLINED", respondedAt: new Date() },
     });
+    await Promise.all([
+      notifyInvites([invite.senderId, invite.receiverId]),
+      notifyRooms([invite.roomId]),
+    ]);
     return { ok: true };
   }
 
-  const joined = await joinRoomByCode(invite.room.code);
+  const joined = await claimGuestSeat(invite.room.code, userId);
   if (!joined.ok) {
     // Seat was taken meanwhile — make sure this card disappears for both.
     await prisma.matchInvite.updateMany({
       where: { id: inviteId, status: "PENDING" },
       data: { status: "EXPIRED", respondedAt: new Date() },
     });
+    await notifyInvites([invite.senderId, invite.receiverId]);
     return joined;
   }
   return { ok: true, code: invite.room.code };

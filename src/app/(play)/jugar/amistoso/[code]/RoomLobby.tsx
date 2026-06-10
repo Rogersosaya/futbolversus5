@@ -9,6 +9,7 @@ import { AvatarArt, ShieldArt } from "@/components/game-art";
 import { Stars, StatRow } from "@/components/lobby/parts";
 import { useOnline } from "@/components/realtime/presence";
 import { createClient } from "@/lib/supabase-browser";
+import { roomTopicFor, SYNC_EVENT } from "@/lib/realtime-topics";
 import { getRoomPeers, leaveRoom, sendMatchInvite } from "@/app/actions/matchroom";
 import type { RoomLobbyData } from "@/actions/matchroom";
 import type { PlayerCard, SelfMatchCard } from "@/actions/friends";
@@ -218,21 +219,13 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
     rivalRef.current = newRivalId;
   }, [room.code, playSlam]);
 
-  // Live room: any change to this room row or its invites re-syncs the lobby.
+  // Live room: every room mutation (seat claimed/freed, closed, invite
+  // changes) pings this room's Broadcast topic server-side → re-sync.
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`room:${room.id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "match_rooms", filter: `id=eq.${room.id}` },
-        () => refetch(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "match_invites", filter: `room_id=eq.${room.id}` },
-        () => refetch(),
-      )
+      .channel(roomTopicFor(room.id))
+      .on("broadcast", { event: SYNC_EVENT }, () => refetch())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);

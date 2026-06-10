@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { ShieldArt } from "@/components/game-art";
 import { createClient } from "@/lib/supabase-browser";
+import { invitesTopicFor, SYNC_EVENT } from "@/lib/realtime-topics";
 import {
   cancelMatchInvite,
   myMatchInviteToasts,
@@ -15,8 +16,9 @@ import {
 
 /**
  * Global floating match-invite notifications, fixed to the bottom-right corner
- * on every route. Live via Postgres Changes on `match_invites` (RLS scopes the
- * delivered rows to invites the user sent or received):
+ * on every route. Live via Realtime Broadcast: every invite mutation pings the
+ * `invites:<userId>` topic of both players server-side, and each client
+ * re-fetches its own (auth-scoped) list through a server action:
  * - sender sees "Invitación enviada" with an X to cancel;
  * - receiver sees the challenge with ✓ accept / ✗ decline;
  * - cancel/decline/accept anywhere makes the card vanish on BOTH ends.
@@ -26,33 +28,23 @@ export function MatchInviteToasts({ userId }: { userId: string }) {
   const [toasts, setToasts] = useState<MatchInviteToast[]>([]);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState<{ id: string; msg: string } | null>(null);
-  const pending = useRef(false);
+  const fetchSeq = useRef(0);
 
+  // Always run; only the latest in-flight result is applied, so a refetch is
+  // never silently dropped while another one is pending.
   const refetch = useCallback(() => {
-    if (pending.current) return;
-    pending.current = true;
-    myMatchInviteToasts()
-      .then(setToasts)
-      .finally(() => {
-        pending.current = false;
-      });
+    const seq = ++fetchSeq.current;
+    myMatchInviteToasts().then((list) => {
+      if (fetchSeq.current === seq) setToasts(list);
+    });
   }, []);
 
   useEffect(() => {
     refetch();
     const supabase = createClient();
     const channel = supabase
-      .channel(`match-invites:${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "match_invites", filter: `receiver_id=eq.${userId}` },
-        () => refetch(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "match_invites", filter: `sender_id=eq.${userId}` },
-        () => refetch(),
-      )
+      .channel(invitesTopicFor(userId))
+      .on("broadcast", { event: SYNC_EVENT }, () => refetch())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
