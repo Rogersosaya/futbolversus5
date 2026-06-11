@@ -90,8 +90,9 @@ export async function joinRoomByCode(code: string): Promise<ActionResult> {
 }
 
 /**
- * Leave the room: the host closes it (lobby dissolves for both), the guest
- * frees the seat (room reopens for the host).
+ * Leave the room: the host closes it (lobby dissolves for both); the guest
+ * frees the seat pre-kickoff (room reopens for the host) or — once the match
+ * is IN_GAME — abandons it, closing the room for both.
  */
 export async function leaveRoom(code: string): Promise<ActionResult> {
   const userId = await requireUser();
@@ -121,14 +122,60 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
       notifyInvites([userId, ...pendingInvites.map((i) => i.receiverId)]),
     ]);
   } else if (room.guestId === userId) {
-    await prisma.matchRoom.update({
-      where: { id: room.id },
-      data: { guestId: null, status: "OPEN", updatedAt: now },
-    });
+    if (room.status === "IN_GAME") {
+      await prisma.matchRoom.update({
+        where: { id: room.id },
+        data: { status: "CLOSED", updatedAt: now },
+      });
+    } else {
+      // Pre-kickoff: free the seat and reset the entry timeline (the room may
+      // be mid-cinematic — the host's client falls back to the invite lobby).
+      await prisma.matchRoom.update({
+        where: { id: room.id },
+        data: { guestId: null, status: "OPEN", readyAt: null, startedAt: null, updatedAt: now },
+      });
+    }
     await notifyRooms([room.id]);
   }
 
   return { ok: true };
+}
+
+/**
+ * Stamp the shared match-entry timeline anchor (`readyAt`) on a READY room.
+ * Called by either member's client the moment it sees BOTH players present in
+ * the lobby (Realtime Presence). Idempotent and race-safe: the first write
+ * wins, everyone else (including the caller losing the race) gets the same
+ * timestamp back, so both clients render one identical timeline.
+ */
+export async function beginMatchEntry(
+  code: string,
+): Promise<{ readyAt: number; serverNow: number } | null> {
+  const userId = await requireUser();
+  if (!userId) return null;
+
+  const room = await prisma.matchRoom.findUnique({ where: { code } });
+  if (!room || (room.hostId !== userId && room.guestId !== userId)) return null;
+  if (room.readyAt) return { readyAt: room.readyAt.getTime(), serverNow: Date.now() };
+  if (room.status !== "READY" || !room.guestId) return null;
+
+  const now = new Date();
+  const stamped = await prisma.matchRoom.updateMany({
+    where: { id: room.id, status: "READY", readyAt: null },
+    data: { readyAt: now, updatedAt: now },
+  });
+  if (stamped.count > 0) {
+    await notifyRooms([room.id]);
+    return { readyAt: now.getTime(), serverNow: Date.now() };
+  }
+
+  // Lost the race against the rival's identical call — return the winner's
+  // anchor so both clients still share the exact same timeline.
+  const fresh = await prisma.matchRoom.findUnique({
+    where: { id: room.id },
+    select: { readyAt: true },
+  });
+  return fresh?.readyAt ? { readyAt: fresh.readyAt.getTime(), serverNow: Date.now() } : null;
 }
 
 /**
@@ -278,9 +325,13 @@ export async function myMatchInviteToasts(): Promise<MatchInviteToast[]> {
 }
 
 /** Client-callable live snapshot of the room for the lobby's realtime refresh:
- * current status + the rival's card (if seated) + pending invite targets. */
+ * current status + timeline anchors + the rival's card (if seated) + pending
+ * invite targets. `serverNow` lets the client correct its clock skew. */
 export async function getRoomPeers(code: string): Promise<{
-  status: "OPEN" | "READY" | "CLOSED";
+  status: "OPEN" | "READY" | "IN_GAME" | "CLOSED";
+  readyAt: number | null;
+  startedAt: number | null;
+  serverNow: number;
   rival: SelfMatchCard | null;
   invitedIds: string[];
 } | null> {
@@ -301,5 +352,12 @@ export async function getRoomPeers(code: string): Promise<{
       : Promise.resolve([]),
   ]);
 
-  return { status: room.status, rival, invitedIds: pending.map((p) => p.receiverId) };
+  return {
+    status: room.status,
+    readyAt: room.readyAt?.getTime() ?? null,
+    startedAt: room.startedAt?.getTime() ?? null,
+    serverNow: Date.now(),
+    rival,
+    invitedIds: pending.map((p) => p.receiverId),
+  };
 }

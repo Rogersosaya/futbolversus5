@@ -6,6 +6,7 @@ import {
   getRoomByCode,
   getRoomLobbyData,
 } from "@/actions/matchroom";
+import { timelineDone } from "@/lib/match-timeline";
 
 import { RoomLobby } from "./RoomLobby";
 import { RoomUnavailable } from "./RoomUnavailable";
@@ -47,6 +48,13 @@ export default async function MatchRoomPage({
     }
     room = await getRoomByCode(code);
     if (!room) return <RoomUnavailable reason="closed" />;
+  }
+
+  // The match already started (or its entry cinematic fully elapsed while
+  // this player was away) → straight to the game room. A refresh mid-cinematic
+  // does NOT redirect: the lobby resumes the sequence at the right beat.
+  if (room.status === "IN_GAME" || (room.status === "READY" && timelineDone(room.readyAt))) {
+    redirect(`/jugar/amistoso/${code}/partido`);
   }
 
   const lobby = await getRoomLobbyData(room, userId);

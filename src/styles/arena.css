@@ -1,0 +1,109 @@
+/* FUTBOL VERSUS — stadium-entry cinematic + live game room (arena) */
+
+/* ===== STADIUM ENTRY (lobby → game room cinematic) =====
+   Every layer runs one animation of duration --entry-ms (set from the shared
+   timeline constant in JS) with a negative --entry-offset delay, so a client
+   that refreshes mid-cinematic resumes at the exact frame the rival sees.
+   Materials are transform/opacity/filter only. */
+.stadium-entry{position:absolute;inset:0;z-index:40;overflow:hidden;pointer-events:none}
+.stadium-entry>*{animation-duration:var(--entry-ms);animation-delay:var(--entry-offset);animation-fill-mode:both;animation-timing-function:linear}
+
+/* base darkness: the lobby fades into the tunnel */
+.se-black{position:absolute;inset:0;background:#04060b;animation-name:seBlack}
+@keyframes seBlack{0%{opacity:0}8%,100%{opacity:1}}
+
+/* rushing tunnel: concentric light rings scaling toward the viewer */
+.se-rush{position:absolute;inset:-40%;animation-name:seRush;
+  background:repeating-radial-gradient(circle at 50% 56%,rgba(176,196,230,.08) 0 2px,transparent 2px 110px)}
+@keyframes seRush{0%,6%{opacity:0;transform:scale(.55)}16%{opacity:1}70%{opacity:.9;transform:scale(2.4)}82%,100%{opacity:0;transform:scale(2.7)}}
+.se-rush.r2{animation-name:seRush2;
+  background:repeating-radial-gradient(circle at 50% 56%,rgba(232,207,142,.06) 0 2px,transparent 2px 72px)}
+@keyframes seRush2{0%,10%{opacity:0;transform:scale(.4)}22%{opacity:1}70%{opacity:.8;transform:scale(3)}82%,100%{opacity:0;transform:scale(3.2)}}
+
+/* the light at the end of the tunnel, swallowing the screen at the burst */
+.se-mouth{position:absolute;left:50%;top:56%;width:46vmin;height:30vmin;border-radius:50% 50% 46% 46%;filter:blur(6px);
+  background:radial-gradient(closest-side,#fff7e0 0%,rgba(232,207,142,.85) 30%,rgba(120,140,190,.25) 62%,transparent 75%);
+  animation-name:seMouth}
+@keyframes seMouth{0%,6%{opacity:0;transform:translate(-50%,-50%) scale(.1)}16%{opacity:.9;transform:translate(-50%,-50%) scale(.4)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1.5)}84%{opacity:1;transform:translate(-50%,-50%) scale(7)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(9)}}
+
+/* floodlight beams at the burst */
+.se-beam{position:absolute;top:-20%;width:18vw;height:85vh;filter:blur(14px);opacity:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.85),transparent 70%)}
+.se-beam.b1{left:12%;animation-name:seBeam}
+.se-beam.b2{right:12%;animation-name:seBeamR}
+@keyframes seBeam{0%,72%{opacity:0;transform:rotate(26deg)}80%{opacity:.9;transform:rotate(18deg)}92%{opacity:.25;transform:rotate(15deg)}100%{opacity:0;transform:rotate(15deg)}}
+@keyframes seBeamR{0%,72%{opacity:0;transform:rotate(-26deg)}80%{opacity:.9;transform:rotate(-18deg)}92%{opacity:.25;transform:rotate(-15deg)}100%{opacity:0;transform:rotate(-15deg)}}
+
+/* whiteout into the pitch reveal */
+.se-flash{position:absolute;inset:0;background:#fff;animation-name:seFlash}
+@keyframes seFlash{0%,76%{opacity:0}81%{opacity:.95}88%{opacity:.15}100%{opacity:0}}
+.se-pitch{position:absolute;inset:0;animation-name:sePitch;
+  background:linear-gradient(180deg,rgba(4,6,11,.25) 0%,rgba(4,6,11,.7) 34%,rgba(23,94,48,.8) 100%)}
+@keyframes sePitch{0%,78%{opacity:0}88%,100%{opacity:1}}
+
+/* copy beats */
+.se-text{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:0 24px}
+.se-text>*{animation-duration:var(--entry-ms);animation-delay:var(--entry-offset);animation-fill-mode:both}
+.se-tag{display:inline-flex;align-items:center;height:36px;padding:0 18px;border-radius:40px;border:1px solid rgba(232,207,142,.4);
+  background:rgba(16,20,28,.55);font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.18em;color:var(--gold);
+  animation-name:seTextIn}
+.se-title{font-family:var(--font-d);font-weight:800;font-size:clamp(56px,9vw,96px);line-height:.88;color:#fff;
+  text-shadow:0 8px 60px rgba(0,0,0,.8),0 0 80px rgba(232,207,142,.25);text-wrap:balance;animation-name:seTitle}
+@keyframes seTitle{0%,12%{opacity:0;transform:translateY(26px) scale(.96)}22%{opacity:1;transform:none}64%{opacity:1;transform:none}74%,100%{opacity:0;transform:translateY(-14px)}}
+.se-clubs{display:flex;align-items:center;gap:16px;font-family:var(--font-d);font-weight:700;font-size:26px;letter-spacing:.04em;animation-name:seTextIn}
+.se-clubs b{color:#f3f5fa;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.se-clubs i{font-style:normal;font-weight:800;color:var(--red);text-shadow:0 0 18px rgba(200,16,46,.6)}
+@keyframes seTextIn{0%,16%{opacity:0;transform:translateY(14px)}28%{opacity:1;transform:none}64%{opacity:1}74%,100%{opacity:0}}
+
+/* lobby center while the sequence is arming/running */
+.ctx-sub.entering{display:flex;align-items:center;gap:10px;color:var(--txt-2);font-weight:500}
+.ctx-sub.entering .td{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(232,207,142,.8);animation:lgpulse 1.4s ease-in-out infinite}
+
+/* ===== ARENA (live game room) ===== */
+/* entrance: continuity from the cinematic's final dark+pitch frame */
+.arena .gscore{animation:arenaScore .7s cubic-bezier(.16,.9,.3,1) .15s both}
+@keyframes arenaScore{from{opacity:0;transform:translateX(-50%) translateY(-18px)}to{opacity:1;transform:translateX(-50%)}}
+.arena .gpitch-wrap{animation:arenaPitch .9s cubic-bezier(.22,.61,.36,1) .1s both}
+@keyframes arenaPitch{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+.arena .game-exit,.arena .arena-wait{animation:arenaFade .6s ease .5s both}
+@keyframes arenaFade{from{opacity:0}to{opacity:1}}
+
+/* pre-game status bar (replaces the gameplay control bar until it ships) */
+.arena-wait{position:absolute;top:126px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:12px;
+  height:54px;padding:0 24px;border-radius:13px;background:rgba(11,15,23,.92);border:1px solid var(--line);
+  box-shadow:0 22px 50px -18px rgba(0,0,0,.85);backdrop-filter:blur(6px)}
+.arena-wait .wd{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(232,207,142,.8);animation:lgpulse 1.4s ease-in-out infinite}
+.arena-wait span:last-child{font-family:var(--font-d);font-weight:600;font-size:15px;letter-spacing:.14em;color:var(--txt-2)}
+
+/* synchronized kickoff banner */
+.kickoff{position:absolute;inset:0;z-index:9;display:grid;place-items:center;pointer-events:none}
+.kickoff .ko-t{font-family:var(--font-d);font-weight:800;font-size:clamp(44px,6vw,84px);color:#fff;letter-spacing:.04em;
+  text-shadow:0 0 50px rgba(232,207,142,.5),0 10px 40px rgba(0,0,0,.7);animation:koIn 2.4s cubic-bezier(.16,.9,.3,1) both}
+@keyframes koIn{0%{opacity:0;transform:scale(1.5)}12%{opacity:1;transform:scale(1)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.94)}}
+
+/* rival connection notice */
+.conn-chip{position:absolute;top:34px;right:40px;z-index:8;display:flex;align-items:center;gap:10px;height:40px;padding:0 18px;
+  border-radius:30px;border:1px solid rgba(200,16,46,.5);background:rgba(200,16,46,.12);
+  font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.12em;color:#f0939f}
+.conn-chip .cd{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px rgba(200,16,46,.8);animation:lgpulse 1s ease-in-out infinite}
+
+/* match over: the rival abandoned */
+.arena-closed{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  text-align:center;background:rgba(4,6,11,.88);backdrop-filter:blur(4px);animation:arenaFade .4s ease both}
+
+/* ===== reduced motion ===== */
+@media (prefers-reduced-motion: reduce){
+  .se-rush,.se-rush.r2,.se-mouth,.se-beam,.se-flash{display:none}
+  .se-black{animation:none;opacity:1}
+  .se-pitch{animation-name:sePitchReduced}
+  @keyframes sePitchReduced{0%,70%{opacity:0}90%,100%{opacity:1}}
+  .se-title,.se-tag,.se-clubs{animation-name:seTextReduced}
+  @keyframes seTextReduced{0%,10%{opacity:0}20%{opacity:1}70%{opacity:1}80%,100%{opacity:0}}
+  .arena .gscore,.arena .gpitch-wrap,.arena .game-exit,.arena .arena-wait{animation:none}
+  .arena .gscore{transform:translateX(-50%)}
+  .kickoff .ko-t{animation:koReduced 2.4s ease both}
+  @keyframes koReduced{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}
+  .arena-wait .wd,.conn-chip .cd,.ctx-sub.entering .td{animation:none}
+}

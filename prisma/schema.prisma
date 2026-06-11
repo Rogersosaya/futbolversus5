@@ -169,6 +169,7 @@ model OwnedCollectible {
 enum MatchRoomStatus {
   OPEN // waiting for a rival (seat free)
   READY // both seats taken — match found
+  IN_GAME // entry cinematic finished — both players in the game room
   CLOSED // abandoned by the host / superseded
 
   @@map("match_room_status")
@@ -189,6 +190,13 @@ model MatchRoom {
   difficulty String?
   hostId     String          @map("host_id") @db.Uuid
   guestId    String?         @map("guest_id") @db.Uuid
+  /// Server timestamp stamped when both players are present in the READY
+  /// lobby. Single shared anchor both clients derive the synchronized
+  /// match-entry cinematic from. Cleared if the guest leaves before kickoff.
+  readyAt    DateTime?       @map("ready_at")
+  /// Server timestamp of the READY → IN_GAME promotion (first player landing
+  /// in the game room after the cinematic).
+  startedAt  DateTime?       @map("started_at")
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @default(now()) @map("updated_at")
 
@@ -278,4 +286,370 @@ model Friendship {
   @@unique([userAId, userBId])
   @@index([userBId])
   @@map("friendships")
+}
+
+// ============================================================
+// FUTDB — datos de referencia para los minijuegos de fútbol
+// (jugadores, clubes, competiciones, stats…). Solo lectura:
+// se cargan vía supabase/migrations + \copy, nunca desde la app.
+// ============================================================
+
+model Country {
+  countryPk     Int     @id @map("country_pk")
+  countryName   String  @unique @map("country_name")
+  /// id Transfermarkt (puede ser null)
+  countryId     Int?    @map("country_id")
+  confederation String?
+  flagUrl       String? @map("flag_url")
+
+  @@map("countries")
+}
+
+model Competition {
+  /// ej. 'ES1', 'CL', 'GB1'
+  competitionId      String  @id @map("competition_id")
+  competitionCode    String? @map("competition_code")
+  name               String
+  subType            String? @map("sub_type")
+  /// domestic_league | domestic_cup | international_cup
+  type               String?
+  countryId          Int?    @map("country_id")
+  countryName        String? @map("country_name")
+  domesticLeagueCode String? @map("domestic_league_code")
+  confederation      String?
+  totalClubs         Int?    @map("total_clubs")
+  url                String?
+  logoUrl            String? @map("logo_url")
+
+  clubs       FutClub[]
+  seasonStats PlayerSeasonStat[]
+  playerLinks PlayerCompetition[]
+
+  @@map("competitions")
+}
+
+/// Club de Transfermarkt ("Fut" para no chocar con los collectibles del juego).
+model FutClub {
+  clubId                Int      @id @map("club_id")
+  clubCode              String?  @map("club_code")
+  name                  String
+  domesticCompetitionId String?  @map("domestic_competition_id")
+  totalMarketValue      Decimal? @map("total_market_value")
+  squadSize             Int?     @map("squad_size")
+  averageAge            Decimal? @map("average_age")
+  foreignersNumber      Int?     @map("foreigners_number")
+  foreignersPercentage  Decimal? @map("foreigners_percentage")
+  nationalTeamPlayers   Int?     @map("national_team_players")
+  stadiumName           String?  @map("stadium_name")
+  stadiumSeats          Int?     @map("stadium_seats")
+  netTransferRecord     String?  @map("net_transfer_record")
+  coachName             String?  @map("coach_name")
+  lastSeason            Int?     @map("last_season")
+  filename              String?
+  url                   String?
+  /// escudo: https://tmssl.akamaized.net/images/wappen/head/{club_id}.png
+  logoUrl               String?  @map("logo_url")
+
+  competition   Competition?   @relation(fields: [domesticCompetitionId], references: [competitionId])
+  managerStints ManagerClub[]
+  trophyWins    TrophyWinner[]
+  stadiums      FutStadium[]
+
+  @@map("clubs")
+}
+
+model NationalTeam {
+  nationalTeamId       Int      @id @map("national_team_id")
+  name                 String
+  teamCode             String?  @map("team_code")
+  countryId            Int?     @map("country_id")
+  countryName          String?  @map("country_name")
+  countryCode          String?  @map("country_code")
+  confederation        String?
+  /// bandera de la selección
+  teamImageUrl         String?  @map("team_image_url")
+  squadSize            Int?     @map("squad_size")
+  averageAge           Decimal? @map("average_age")
+  foreignersNumber     Int?     @map("foreigners_number")
+  foreignersPercentage Decimal? @map("foreigners_percentage")
+  totalMarketValue     Decimal? @map("total_market_value")
+  coachName            String?  @map("coach_name")
+  fifaRanking          Int?     @map("fifa_ranking")
+  lastSeason           Int?     @map("last_season")
+  url                  String?
+
+  players     FutPlayer[]
+  playerLinks PlayerNationalTeam[]
+
+  @@map("national_teams")
+}
+
+/// Jugador de Transfermarkt (47K, foto en imageUrl con 100% de cobertura).
+model FutPlayer {
+  playerId                Int       @id @map("player_id")
+  firstName               String?   @map("first_name")
+  lastName                String?   @map("last_name")
+  name                    String
+  lastSeason              Int?      @map("last_season")
+  /// Sin FK en la BD: ~2,269 juegan en clubes menores fuera de `clubs`
+  /// (currentClub queda null para ellos; el nombre está en currentClubName).
+  currentClubId           Int?      @map("current_club_id")
+  playerCode              String?   @map("player_code")
+  countryOfBirth          String?   @map("country_of_birth")
+  cityOfBirth             String?   @map("city_of_birth")
+  countryOfCitizenship    String?   @map("country_of_citizenship")
+  dateOfBirth             DateTime? @map("date_of_birth") @db.Date
+  subPosition             String?   @map("sub_position")
+  position                String?
+  foot                    String?
+  heightInCm              Decimal?  @map("height_in_cm")
+  contractExpirationDate  DateTime? @map("contract_expiration_date") @db.Date
+  agentName               String?   @map("agent_name")
+  /// foto oficial Transfermarkt
+  imageUrl                String?   @map("image_url")
+  internationalCaps       Int?      @map("international_caps")
+  internationalGoals      Int?      @map("international_goals")
+  currentNationalTeamId   Int?      @map("current_national_team_id")
+  url                     String?
+  currentClubDomesticCompetitionId String? @map("current_club_domestic_competition_id")
+  currentClubName         String?   @map("current_club_name")
+  marketValueInEur        Decimal?  @map("market_value_in_eur")
+  highestMarketValueInEur Decimal?  @map("highest_market_value_in_eur")
+
+  nationalTeam  NationalTeam?        @relation(fields: [currentNationalTeamId], references: [nationalTeamId])
+  clubHistory   PlayerClub[]
+  seasonStats   PlayerSeasonStat[]
+  rosters       SeasonRoster[]
+  competitions  PlayerCompetition[]
+  nationalTeams PlayerNationalTeam[]
+  transfers     Transfer[]
+  awards        AwardWinner[]
+
+  @@index([name])
+  @@index([countryOfCitizenship])
+  @@index([position, subPosition])
+  @@map("players")
+}
+
+model Manager {
+  managerId   Int       @id @map("manager_id")
+  wikidataId  String?   @unique @map("wikidata_id")
+  name        String
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  nationality String?
+  /// foto Wikimedia Commons (licencia libre)
+  imageUrl    String?   @map("image_url")
+
+  clubs ManagerClub[]
+
+  @@map("managers")
+}
+
+/// Historial de equipos dirigidos (Wikidata).
+model ManagerClub {
+  id             BigInt    @id @default(autoincrement())
+  managerId      Int?      @map("manager_id")
+  /// null si el equipo no se pudo mapear a un club de Transfermarkt
+  clubId         Int?      @map("club_id")
+  teamName       String?   @map("team_name")
+  teamWikidataId String?   @map("team_wikidata_id")
+  startDate      DateTime? @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+
+  manager Manager? @relation(fields: [managerId], references: [managerId])
+  club    FutClub? @relation(fields: [clubId], references: [clubId])
+
+  @@index([clubId])
+  @@index([managerId])
+  @@map("manager_clubs")
+}
+
+model FutStadium {
+  stadiumId   Int     @id @map("stadium_id")
+  stadiumName String  @map("stadium_name")
+  capacity    Int?
+  clubId      Int?    @map("club_id")
+  clubName    String? @map("club_name")
+
+  club FutClub? @relation(fields: [clubId], references: [clubId])
+
+  @@map("stadiums")
+}
+
+model FutPosition {
+  positionId Int     @id @map("position_id")
+  nameEn     String? @map("name_en")
+  nameEs     String? @map("name_es")
+  code       String?
+  category   String?
+
+  @@map("positions")
+}
+
+model Formation {
+  formationId Int     @id @map("formation_id")
+  name        String
+  /// lista de codes de posición separada por comas
+  positions   String?
+
+  @@map("formations")
+}
+
+model Award {
+  awardId   Int     @id @map("award_id")
+  name      String
+  organizer String?
+  since     Int?
+
+  winners AwardWinner[]
+
+  @@map("awards")
+}
+
+model Trophy {
+  trophyId      Int     @id @map("trophy_id")
+  name          String
+  /// 'club' | 'international'
+  scope         String?
+  confederation String?
+
+  winners TrophyWinner[]
+
+  @@map("trophies")
+}
+
+/// Historial real de clubes por jugador (derivado de partidos jugados).
+/// clubId sin FK: algunos clubes menores no están en `clubs`.
+model PlayerClub {
+  playerId    Int  @map("player_id")
+  clubId      Int  @map("club_id")
+  firstSeason Int? @map("first_season")
+  lastSeason  Int? @map("last_season")
+  matches     Int?
+  goals       Int?
+  assists     Int?
+  minutes     Int?
+
+  player FutPlayer @relation(fields: [playerId], references: [playerId])
+
+  @@id([playerId, clubId])
+  @@index([clubId])
+  @@map("player_clubs")
+}
+
+/// La tabla más rica: jugador × club × temporada × competición.
+model PlayerSeasonStat {
+  playerId      Int    @map("player_id")
+  clubId        Int    @map("club_id")
+  season        Int
+  competitionId String @map("competition_id")
+  matches       Int?
+  goals         Int?
+  assists       Int?
+  minutes       Int?
+  yellowCards   Int?   @map("yellow_cards")
+  redCards      Int?   @map("red_cards")
+
+  player      FutPlayer   @relation(fields: [playerId], references: [playerId])
+  competition Competition @relation(fields: [competitionId], references: [competitionId])
+
+  @@id([playerId, clubId, season, competitionId])
+  @@index([competitionId, season])
+  @@map("player_season_stats")
+}
+
+/// Plantilla de cada club por temporada.
+model SeasonRoster {
+  clubId   Int @map("club_id")
+  season   Int
+  playerId Int @map("player_id")
+  matches  Int?
+  goals    Int?
+  assists  Int?
+  minutes  Int?
+
+  player FutPlayer @relation(fields: [playerId], references: [playerId])
+
+  @@id([clubId, season, playerId])
+  @@index([playerId])
+  @@map("season_rosters")
+}
+
+/// En qué competiciones jugó cada futbolista.
+model PlayerCompetition {
+  playerId      Int    @map("player_id")
+  competitionId String @map("competition_id")
+  seasons       Int?
+  matches       Int?
+  goals         Int?
+  assists       Int?
+  firstSeason   Int?   @map("first_season")
+  lastSeason    Int?   @map("last_season")
+
+  player      FutPlayer   @relation(fields: [playerId], references: [playerId])
+  competition Competition @relation(fields: [competitionId], references: [competitionId])
+
+  @@id([playerId, competitionId])
+  @@index([competitionId])
+  @@map("player_competitions")
+}
+
+model PlayerNationalTeam {
+  playerId       Int  @map("player_id")
+  nationalTeamId Int  @map("national_team_id")
+  caps           Int?
+  goals          Int?
+
+  player       FutPlayer    @relation(fields: [playerId], references: [playerId])
+  nationalTeam NationalTeam @relation(fields: [nationalTeamId], references: [nationalTeamId])
+
+  @@id([playerId, nationalTeamId])
+  @@map("player_national_teams")
+}
+
+model Transfer {
+  id               BigInt    @id @default(autoincrement())
+  playerId         Int?      @map("player_id")
+  transferDate     DateTime? @map("transfer_date") @db.Date
+  transferSeason   String?   @map("transfer_season")
+  fromClubId       Int?      @map("from_club_id")
+  toClubId         Int?      @map("to_club_id")
+  fromClubName     String?   @map("from_club_name")
+  toClubName       String?   @map("to_club_name")
+  transferFee      Decimal?  @map("transfer_fee")
+  marketValueInEur Decimal?  @map("market_value_in_eur")
+  playerName       String?   @map("player_name")
+
+  player FutPlayer? @relation(fields: [playerId], references: [playerId])
+
+  @@index([playerId])
+  @@map("transfers")
+}
+
+model AwardWinner {
+  awardId    Int     @map("award_id")
+  year       Int
+  playerName String? @map("player_name")
+  /// null para ganadores históricos retirados que no están en `players`
+  playerId   Int?    @map("player_id")
+
+  award  Award      @relation(fields: [awardId], references: [awardId])
+  player FutPlayer? @relation(fields: [playerId], references: [playerId])
+
+  @@id([awardId, year])
+  @@map("award_winners")
+}
+
+model TrophyWinner {
+  trophyId   Int     @map("trophy_id")
+  year       Int
+  /// club o selección
+  winnerName String? @map("winner_name")
+  clubId     Int?    @map("club_id")
+
+  trophy Trophy   @relation(fields: [trophyId], references: [trophyId])
+  club   FutClub? @relation(fields: [clubId], references: [clubId])
+
+  @@id([trophyId, year])
+  @@map("trophy_winners")
 }

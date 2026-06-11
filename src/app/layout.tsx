@@ -15,6 +15,7 @@ import "@/styles/game.css";
 import "@/styles/auth.css";
 import "@/styles/profile-setup.css";
 import "@/styles/match.css";
+import "@/styles/arena.css";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],

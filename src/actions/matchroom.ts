@@ -24,6 +24,10 @@ export interface RoomSnapshot {
   gameName: string | null;
   hostId: string;
   guestId: string | null;
+  /** Server timestamp (epoch ms) anchoring the match-entry timeline. */
+  readyAt: number | null;
+  /** Server timestamp (epoch ms) of the READY → IN_GAME promotion. */
+  startedAt: number | null;
 }
 
 /** Everything the lobby screen needs for one of the two members. */
@@ -36,6 +40,8 @@ export interface RoomLobbyData {
   friends: PlayerCard[];
   /** Host only: friend ids with a PENDING invite to this room. */
   invitedIds: string[];
+  /** Server clock at render time — clients derive their clock skew from it. */
+  serverNow: number;
 }
 
 export interface ActionResult {
@@ -57,11 +63,11 @@ export async function activeRoomFootprint(userId: string) {
       select: { receiverId: true, roomId: true },
     }),
     prisma.matchRoom.findMany({
-      where: { hostId: userId, status: { in: ["OPEN", "READY"] } },
+      where: { hostId: userId, status: { in: ["OPEN", "READY", "IN_GAME"] } },
       select: { id: true },
     }),
     prisma.matchRoom.findMany({
-      where: { guestId: userId, status: "READY" },
+      where: { guestId: userId, status: { in: ["READY", "IN_GAME"] } },
       select: { id: true },
     }),
   ]);
@@ -80,12 +86,18 @@ export async function leaveActiveRooms(tx: Prisma.TransactionClient, userId: str
     data: { status: "CANCELLED", respondedAt: now },
   });
   await tx.matchRoom.updateMany({
-    where: { hostId: userId, status: { in: ["OPEN", "READY"] } },
+    where: { hostId: userId, status: { in: ["OPEN", "READY", "IN_GAME"] } },
     data: { status: "CLOSED", updatedAt: now },
   });
+  // A guest leaving a pre-kickoff lobby frees the seat (the host keeps the
+  // room); leaving a match already in play abandons it for both.
   await tx.matchRoom.updateMany({
     where: { guestId: userId, status: "READY" },
-    data: { guestId: null, status: "OPEN", updatedAt: now },
+    data: { guestId: null, status: "OPEN", readyAt: null, updatedAt: now },
+  });
+  await tx.matchRoom.updateMany({
+    where: { guestId: userId, status: "IN_GAME" },
+    data: { status: "CLOSED", updatedAt: now },
   });
 }
 
@@ -125,10 +137,11 @@ export async function claimGuestSeat(code: string, userId: string): Promise<Acti
       // and my previous room survives untouched.
       await leaveActiveRooms(tx, userId);
 
-      // Atomic seat claim: only succeeds while the seat is still free.
+      // Atomic seat claim: only succeeds while the seat is still free. The
+      // timeline anchors reset so a re-claimed room starts a fresh sequence.
       const claimed = await tx.matchRoom.updateMany({
         where: { id: room.id, status: "OPEN", guestId: null },
-        data: { guestId: userId, status: "READY", updatedAt: now },
+        data: { guestId: userId, status: "READY", readyAt: null, startedAt: null, updatedAt: now },
       });
       if (claimed.count === 0) throw new Error("SEAT_TAKEN");
 
@@ -178,7 +191,24 @@ const toSnapshot = (room: MatchRoom, gameName: string | null): RoomSnapshot => (
   gameName,
   hostId: room.hostId,
   guestId: room.guestId,
+  readyAt: room.readyAt?.getTime() ?? null,
+  startedAt: room.startedAt?.getTime() ?? null,
 });
+
+/**
+ * Promote a READY room (whose entry cinematic is underway — readyAt stamped)
+ * to IN_GAME. Idempotent: the first player landing in the game room wins the
+ * write, later calls are no-ops. Pings the room topic so the rival's client
+ * learns the match is officially on.
+ */
+export async function markRoomInGame(roomId: string): Promise<void> {
+  const now = new Date();
+  const promoted = await prisma.matchRoom.updateMany({
+    where: { id: roomId, status: "READY", readyAt: { not: null } },
+    data: { status: "IN_GAME", startedAt: now, updatedAt: now },
+  });
+  if (promoted.count > 0) await notifyRooms([roomId]);
+}
 
 /** Lobby data for a room member (host or guest); null if `userId` is neither. */
 export async function getRoomLobbyData(
@@ -212,6 +242,34 @@ export async function getRoomLobbyData(
     rival,
     friends,
     invitedIds: pendingInvites.map((i) => i.receiverId),
+    serverNow: Date.now(),
   };
+}
+
+/** Everything the in-game arena needs for one of the two members. */
+export interface ArenaData {
+  room: RoomSnapshot;
+  role: RoomRole;
+  me: SelfMatchCard;
+  rival: SelfMatchCard;
+  serverNow: number;
+}
+
+/** Arena data for a room member; null if `userId` is neither seat or a card
+ * is missing. Leaner than getRoomLobbyData (no friends/invites). */
+export async function getArenaData(room: MatchRoom, userId: string): Promise<ArenaData | null> {
+  const role: RoomRole | null =
+    room.hostId === userId ? "host" : room.guestId === userId ? "guest" : null;
+  if (!role || !room.guestId) return null;
+
+  const rivalId = role === "host" ? room.guestId : room.hostId;
+  const [me, rival, gameName] = await Promise.all([
+    getMatchCard(userId),
+    getMatchCard(rivalId),
+    gameNameOf(room),
+  ]);
+  if (!me || !rival) return null;
+
+  return { room: toSnapshot(room, gameName), role, me, rival, serverNow: Date.now() };
 }
 
