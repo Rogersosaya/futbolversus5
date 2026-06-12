@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthUserId } from "@/actions/profile";
 import { getArenaData, getRoomByCode, markRoomInGame } from "@/actions/matchroom";
+import { getMatchGameStateCore } from "@/actions/match-game";
 
 import { RoomUnavailable } from "../RoomUnavailable";
 import { MatchArena } from "./MatchArena";
@@ -11,7 +12,9 @@ import { MatchArena } from "./MatchArena";
  * owns every pre-kickoff state; landing here with a READY room whose entry
  * cinematic was anchored (readyAt stamped) promotes it to IN_GAME — an
  * idempotent first-write-wins update, so it doesn't matter which player's
- * cinematic finishes first or whether both arrive at once.
+ * cinematic finishes first or whether both arrive at once. FINISHED rooms
+ * render the arena in result mode (a reload after full time is legitimate);
+ * only CLOSED (abandoned) rooms are unavailable.
  */
 export default async function MatchArenaPage({
   params,
@@ -37,13 +40,18 @@ export default async function MatchArenaPage({
   }
 
   if (room.status === "READY") {
-    await markRoomInGame(room.id);
+    await markRoomInGame(room);
     room = await getRoomByCode(code);
     if (!room || room.status === "CLOSED") return <RoomUnavailable reason="closed" />;
-    if (room.status !== "IN_GAME") redirect(`/jugar/amistoso/${code}`);
+    if (room.status !== "IN_GAME" && room.status !== "FINISHED") {
+      redirect(`/jugar/amistoso/${code}`);
+    }
   }
 
-  const arena = await getArenaData(room, userId);
-  if (!arena) redirect(`/jugar/amistoso/${code}`);
-  return <MatchArena initial={arena} />;
+  const [arena, game] = await Promise.all([
+    getArenaData(room, userId),
+    getMatchGameStateCore(room, userId),
+  ]);
+  if (!arena || !game) redirect(`/jugar/amistoso/${code}`);
+  return <MatchArena initial={arena} initialGame={game} />;
 }

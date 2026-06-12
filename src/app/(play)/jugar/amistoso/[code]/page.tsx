@@ -51,9 +51,14 @@ export default async function MatchRoomPage({
   }
 
   // The match already started (or its entry cinematic fully elapsed while
-  // this player was away) → straight to the game room. A refresh mid-cinematic
-  // does NOT redirect: the lobby resumes the sequence at the right beat.
-  if (room.status === "IN_GAME" || (room.status === "READY" && timelineDone(room.readyAt))) {
+  // this player was away) → straight to the game room; FINISHED lands on its
+  // result screen there too. A refresh mid-cinematic does NOT redirect: the
+  // lobby resumes the sequence at the right beat.
+  if (
+    room.status === "IN_GAME" ||
+    room.status === "FINISHED" ||
+    (room.status === "READY" && timelineDone(room.readyAt))
+  ) {
     redirect(`/jugar/amistoso/${code}/partido`);
   }
 

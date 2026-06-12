@@ -93,8 +93,102 @@
 .arena-closed{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
   text-align:center;background:rgba(4,6,11,.88);backdrop-filter:blur(4px);animation:arenaFade .4s ease both}
 
+/* ===== ONCE MUNDIALISTA — live gameplay ===== */
+
+/* kickoff countdown 3·2·1·¡A JUGAR! */
+.ko-intro{position:absolute;inset:0;z-index:9;display:grid;place-items:center;pointer-events:none;background:rgba(4,6,11,.42)}
+.ko-flash{position:absolute;inset:0;background:radial-gradient(60% 50% at 50% 50%,rgba(232,207,142,.22),transparent 70%);animation:koFlash 1s ease-out both}
+@keyframes koFlash{0%{opacity:1}100%{opacity:0}}
+.ko-num{font-family:var(--font-d);font-weight:800;font-size:clamp(120px,18vw,220px);line-height:1;color:#fff;
+  text-shadow:0 0 70px rgba(232,207,142,.55),0 14px 50px rgba(0,0,0,.8);animation:koNum 1s cubic-bezier(.16,.9,.3,1) both}
+@keyframes koNum{0%{opacity:0;transform:scale(2.1)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(.97)}100%{opacity:0;transform:scale(.9)}}
+.ko-num.go{font-size:clamp(64px,9vw,120px);color:var(--gold);letter-spacing:.04em}
+
+/* countdown timer urgency */
+.gs-time.low{color:var(--red);animation:lgpulse 1s ease-in-out infinite}
+
+/* cells are now buttons: reset chrome, mark free ones as targets */
+button.tok{background:transparent;border:0;padding:0;font:inherit;cursor:default}
+.tok.empty.free{cursor:pointer}
+.tok.empty.free:hover .disc{border-color:rgba(232,207,142,.85);background:rgba(232,207,142,.1);transform:scale(1.07)}
+.tok.empty.free:hover .pos{color:var(--gold)}
+
+/* nation card in penalty: 5s ring countdown replacing the flag */
+.gc-country.pen{border-color:rgba(200,16,46,.45);background:rgba(200,16,46,.08)}
+.pen-ring{width:46px;height:46px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--red) calc(var(--p)*360deg),rgba(255,255,255,.1) 0)}
+.pen-ring::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#10141d}
+.pen-ring b{position:relative;z-index:1;font-family:var(--font-d);font-weight:800;font-size:20px;color:#f0939f}
+.gc-ctx .pen-txt{color:#f0939f;font-size:22px}
+
+/* search field + dropdown */
+.psearch{position:relative}
+.gc-input.off{border-color:var(--line);box-shadow:none;opacity:.6}
+.gc-input.off svg{color:var(--txt-3)}
+.gc-input.err{border-color:rgba(200,16,46,.7);box-shadow:0 0 0 4px rgba(200,16,46,.12);animation:psShake .3s ease}
+@keyframes psShake{0%,100%{transform:none}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+.gc-err{position:absolute;left:4px;top:calc(100% + 8px);z-index:8;padding:7px 14px;border-radius:8px;
+  background:rgba(200,16,46,.16);border:1px solid rgba(200,16,46,.5);
+  font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.06em;color:#f0939f;animation:arenaFade .2s ease both}
+.ps-drop{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:9;display:flex;flex-direction:column;overflow:hidden;
+  border-radius:11px;border:1px solid var(--line-strong);background:rgba(10,14,21,.97);
+  box-shadow:0 26px 60px -16px rgba(0,0,0,.9);backdrop-filter:blur(8px);animation:arenaFade .15s ease both}
+.ps-row{display:flex;align-items:center;gap:12px;padding:8px 14px;border:0;background:transparent;cursor:pointer;text-align:left}
+.ps-row.on{background:rgba(232,207,142,.12)}
+.ps-row .ps-ph{width:38px;height:38px;border-radius:50%;overflow:hidden;flex:0 0 auto;position:relative;
+  background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.ps-row .ps-ph img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
+.ps-row .ps-ph .sil{position:absolute;inset:0;color:#3c4658;padding:5px 5px 0;display:block}
+.ps-row .ps-ph .sil svg{width:100%;height:100%}
+.ps-row .ps-nm{font-family:var(--font-u);font-weight:500;font-size:17px;color:#eef1f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-row.on .ps-nm{color:var(--gold)}
+
+/* nation flag is a remote image (Transfermarkt) */
+.gc-flag img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* disabled control-bar buttons */
+.gc-change:disabled{opacity:.5;cursor:default}
+.gc-change:disabled:hover{border-color:var(--line);background:rgba(255,255,255,.03)}
+
+/* early-finish (unreachable lead) */
+.early-finish{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:10px;
+  height:50px;padding:0 26px;border-radius:30px;border:1px solid rgba(232,207,142,.55);cursor:pointer;
+  background:rgba(16,20,28,.92);color:var(--gold);font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:.12em;
+  box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 0 rgba(232,207,142,.35);animation:efPulse 1.6s ease-in-out infinite}
+.early-finish svg{width:18px;height:18px}
+.early-finish:hover{background:rgba(232,207,142,.14)}
+@keyframes efPulse{0%,100%{box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 0 rgba(232,207,142,.35)}
+  50%{box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 9px rgba(232,207,142,0)}}
+
+/* result screen */
+.match-result{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  text-align:center;background:rgba(4,6,11,.9);backdrop-filter:blur(5px);animation:arenaFade .45s ease both}
+.mr-title{font-family:var(--font-d);font-weight:800;font-size:clamp(56px,9vw,96px);line-height:.9;color:#fff;
+  text-shadow:0 8px 60px rgba(0,0,0,.8);animation:mrIn .7s cubic-bezier(.16,.9,.3,1) both}
+@keyframes mrIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+.match-result.win .mr-title{color:var(--gold);text-shadow:0 0 80px rgba(232,207,142,.45),0 8px 60px rgba(0,0,0,.8)}
+.match-result.lose .mr-title{color:#f0939f;text-shadow:0 0 70px rgba(200,16,46,.4),0 8px 60px rgba(0,0,0,.8)}
+.mr-score{display:flex;align-items:center;gap:18px;padding:14px 26px;border-radius:14px;background:rgba(10,14,21,.94);border:1px solid var(--line)}
+.mr-side{display:flex;align-items:center;gap:12px}
+.mr-side.away{flex-direction:row-reverse}
+.mr-cr{width:42px;height:42px}.mr-cr svg{width:100%;height:100%}
+.mr-club{font-family:var(--font-d);font-weight:700;font-size:20px;letter-spacing:.05em;color:#f2f5fa;max-width:220px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mr-num{font-family:var(--font-u);font-weight:700;font-size:44px;color:#fff;font-variant-numeric:tabular-nums}
+.mr-dash{font-size:30px;color:var(--txt-3)}
+.mr-btn{height:52px;padding:0 34px;border-radius:30px;border:1px solid rgba(232,207,142,.55);cursor:pointer;
+  background:rgba(232,207,142,.12);color:var(--gold);font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.14em;transition:all .18s}
+.mr-btn:hover{background:rgba(232,207,142,.22)}
+
 /* ===== reduced motion ===== */
 @media (prefers-reduced-motion: reduce){
+  .ko-flash{display:none}
+  .ko-num{animation:koReducedNum 1s ease both}
+  @keyframes koReducedNum{0%{opacity:0}15%{opacity:1}85%{opacity:1}100%{opacity:0}}
+  .gc-input.err{animation:none}
+  .early-finish{animation:none}
+  .gs-time.low{animation:none}
+  .tok.empty.free:hover .disc{transform:none}
   .se-rush,.se-rush.r2,.se-mouth,.se-beam,.se-flash{display:none}
   .se-black{animation:none;opacity:1}
   .se-pitch{animation-name:sePitchReduced}

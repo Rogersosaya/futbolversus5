@@ -5,6 +5,7 @@
 // src/app/actions/matchroom.ts ("use server").
 import { prisma } from "@/lib/prisma";
 import { notifyInvites, notifyRooms } from "@/lib/realtime-server";
+import { buildNationCycle } from "@/actions/match-game";
 import {
   getFriends,
   getMatchCard,
@@ -198,16 +199,19 @@ const toSnapshot = (room: MatchRoom, gameName: string | null): RoomSnapshot => (
 /**
  * Promote a READY room (whose entry cinematic is underway — readyAt stamped)
  * to IN_GAME. Idempotent: the first player landing in the game room wins the
- * write, later calls are no-ops. Pings the room topic so the rival's client
- * learns the match is officially on.
+ * write, later calls are no-ops. The winning promotion also seeds the match's
+ * shuffled nation cycle (difficulty-sized FIFA top), so both players walk one
+ * identical deck — the loser's shuffle is discarded with its no-op update.
+ * Pings the room topic so the rival's client learns the match is officially on.
  */
-export async function markRoomInGame(roomId: string): Promise<void> {
+export async function markRoomInGame(room: MatchRoom): Promise<void> {
+  const nationCycle = await buildNationCycle(room.difficulty);
   const now = new Date();
   const promoted = await prisma.matchRoom.updateMany({
-    where: { id: roomId, status: "READY", readyAt: { not: null } },
-    data: { status: "IN_GAME", startedAt: now, updatedAt: now },
+    where: { id: room.id, status: "READY", readyAt: { not: null } },
+    data: { status: "IN_GAME", startedAt: now, nationCycle, updatedAt: now },
   });
-  if (promoted.count > 0) await notifyRooms([roomId]);
+  if (promoted.count > 0) await notifyRooms([room.id]);
 }
 
 /** Lobby data for a room member (host or guest); null if `userId` is neither. */

@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -11,25 +12,58 @@ import { useRouter } from "next/navigation";
 
 import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { ShieldArt } from "@/components/game-art";
+import { Sym } from "@/components/svg";
 import { createClient } from "@/lib/supabase-browser";
 import { roomTopicFor, SYNC_EVENT } from "@/lib/realtime-topics";
-import { getRoomPeers, leaveRoom } from "@/app/actions/matchroom";
+import { leaveRoom } from "@/app/actions/matchroom";
+import {
+  changeNation,
+  claimCell,
+  finalizeMatch,
+  finishEarly,
+  getMatchGameState,
+  searchPlayers,
+} from "@/app/actions/match-game";
 import type { ArenaData } from "@/actions/matchroom";
+import type {
+  ClaimErrorCode,
+  MatchGameState,
+  PlayerHit,
+} from "@/actions/match-game";
 import type { SelfMatchCard } from "@/actions/friends";
 import { BOARD_CELLS } from "@/data/gameboard";
+import { COUNTDOWN_MS, GAME_MS, PENALTY_MS, isLeadUnreachable } from "@/data/match-game";
+
+import { CountdownIntro } from "./CountdownIntro";
+import { ResultScreen } from "./ResultScreen";
 
 /** Fixed side colors: the local player is always the light side, the rival
  * the red side — mirrors the GameOverlay convention. */
 const ME_SIDE = { own: "#eef1f7", glow: "rgba(238,241,247,.75)" };
 const RIVAL_SIDE = { own: "#e8344f", glow: "rgba(232,52,79,.75)" };
 
-/** How long the synchronized kickoff banner stays up (from startedAt). */
-const KICKOFF_MS = 2600;
-
 const sideStyle = (s: { own: string; glow: string }): CSSProperties =>
   ({ "--own": s.own, "--own-glow": s.glow } as CSSProperties);
 
 const pad = (n: number) => String(n).padStart(2, "0");
+
+const CLAIM_ERROR_COPY: Record<ClaimErrorCode, string> = {
+  WRONG_POSITION: "No juega en esa posición",
+  WRONG_NATION: "¡No es de tu selección!",
+  CELL_TAKEN: "¡Tu rival ganó la casilla!",
+  PLAYER_USED: "Ese jugador ya está en el campo",
+  PENALIZED: "Espera el cambio de selección",
+  TOO_EARLY: "El partido aún no comienza",
+  ENDED: "El partido terminó",
+  RETRY: "Inténtalo de nuevo",
+  NOT_MEMBER: "Inténtalo de nuevo",
+};
+
+const Silhouette = () => (
+  <span className="sil">
+    <Sym id="ic-silhouette" viewBox="0 0 64 64" />
+  </span>
+);
 
 function ScoreTeam({
   player,
@@ -57,40 +91,82 @@ function ScoreTeam({
   );
 }
 
+type Phase = "countdown" | "playing" | "finished" | "closed";
+
 /**
- * The live game room. The match itself isn't wired yet, so this renders the
- * official-kickoff experience over real shared state: broadcast-style
- * scoreboard at 0-0 with both presidents' actual cards, a clock derived from
- * the room's server-stamped startedAt (identical on both screens), the empty
- * XI board, and a synchronized kickoff banner. Stays subscribed to the room's
- * Realtime channel: if the rival abandons (room CLOSED) both the overlay and
- * the redirect fire; Presence flags a rival who lost connection.
+ * The live "Once Mundialista" game room. Server-authoritative state: every
+ * snapshot/action response carries serverNow (clock skew) and the whole
+ * timeline is derived from the room's shared startedAt anchor, so countdown,
+ * match clock and penalties tick identically on both screens and survive
+ * reloads. The rival's moves arrive via the room's Broadcast channel (sync
+ * ping → snapshot refetch); my own moves apply instantly from the action
+ * response.
  */
-export function MatchArena({ initial }: { initial: ArenaData }) {
+export function MatchArena({
+  initial,
+  initialGame,
+}: {
+  initial: ArenaData;
+  initialGame: MatchGameState;
+}) {
   const router = useRouter();
   const { room, me, rival } = initial;
 
-  // Server-clock skew (serverNow − clientNow), refreshed with every snapshot.
-  const [skew, setSkew] = useState(() => initial.serverNow - Date.now());
-  const leavingRef = useRef(false);
-
-  const [closed, setClosed] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [game, setGame] = useState<MatchGameState>(initialGame);
+  const [skew, setSkew] = useState(() => initialGame.serverNow - Date.now());
+  const [nowS, setNowS] = useState(() => Date.now() + (initialGame.serverNow - Date.now()));
   const [rivalPresent, setRivalPresent] = useState(true);
-  const [clock, setClock] = useState("00:00");
-  const [kickoff, setKickoff] = useState(
-    () => room.startedAt != null && initial.serverNow - room.startedAt < KICKOFF_MS,
+  const [leaving, setLeaving] = useState(false);
+  /** Transient board-level notice (e.g. "el rival ganó la casilla"). */
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const leavingRef = useRef(false);
+  /** Last full-time finalize attempt (epoch ms) — throttles the retry loop. */
+  const finalizeAtRef = useRef(0);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const gameStart = game.startedAt + COUNTDOWN_MS;
+  const gameEnd = gameStart + GAME_MS;
+
+  const phase: Phase =
+    game.status === "CLOSED"
+      ? "closed"
+      : game.status === "FINISHED"
+        ? "finished"
+        : nowS < gameStart
+          ? "countdown"
+          : "playing";
+
+  const claimsByCell = useMemo(
+    () => new Map(game.claims.map((c) => [c.cellId, c])),
+    [game.claims],
   );
+  const penalized = game.myPenaltyUntil != null && game.myPenaltyUntil > nowS;
+
+  // Selection only exists while actually playable — derived, so a penalty or
+  // the final whistle retires it without effect-driven state juggling.
+  const [rawSelectedCell, setSelectedCell] = useState<string | null>(null);
+  const selectedCell =
+    phase === "playing" && !penalized && rawSelectedCell != null && !claimsByCell.has(rawSelectedCell)
+      ? rawSelectedCell
+      : null;
+  const freeCells = BOARD_CELLS.length - game.claims.length;
+  const leader = Math.max(game.myScore, game.rivalScore);
+  const other = Math.min(game.myScore, game.rivalScore);
+  const earlyFinishAvailable =
+    phase === "playing" && isLeadUnreachable(leader, other, freeCells);
+
+  const adoptServerNow = useCallback((serverNow: number) => {
+    setSkew(serverNow - Date.now());
+  }, []);
 
   const refetch = useCallback(async () => {
-    // Leaving closes the room — don't let our own ping flash the overlay.
     if (leavingRef.current) return;
-    const peers = await getRoomPeers(room.code);
-    if (!peers) return;
-    setSkew(peers.serverNow - Date.now());
-    // Any state other than IN_GAME means the match is over for this screen.
-    if (peers.status !== "IN_GAME") setClosed(true);
-  }, [room.code]);
+    const fresh = await getMatchGameState(room.code);
+    if (!fresh) return;
+    adoptServerNow(fresh.serverNow);
+    setGame(fresh);
+  }, [room.code, adoptServerNow]);
 
   // Same room channel as the lobby: Broadcast pings → re-sync; Presence tells
   // us whether the rival's client is actually connected right now.
@@ -119,37 +195,44 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
     };
   }, [room.id, me.id, rival.id, refetch]);
 
-  // Match clock off the shared server anchor — both screens tick in step.
-  // The first paint is deferred to the next tick (no sync setState in effect).
+  // The shared clock: a single 250ms tick drives the countdown, the match
+  // timer, the penalty ring and every phase transition. Skew-corrected, so
+  // both screens beat in step with the server.
   useEffect(() => {
-    if (room.startedAt == null || closed) return;
-    const startedAt = room.startedAt;
-    const tick = () => {
-      const s = Math.max(Math.floor((Date.now() + skew - startedAt) / 1000), 0);
-      setClock(`${pad(Math.floor(s / 60))}:${pad(s % 60)}`);
-    };
+    if (phase === "finished" || phase === "closed") return;
+    const tick = () => setNowS(Date.now() + skew);
     const t = setTimeout(tick, 0);
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 250);
     return () => {
       clearTimeout(t);
       clearInterval(id);
     };
-  }, [room.startedAt, closed, skew]);
+  }, [phase, skew]);
 
-  // Hide the kickoff banner when its shared window ends.
+  // Full time: both clients ask the server to finalize (idempotent — exactly
+  // one transition runs) and pull the result. The shared clock keeps ticking
+  // while the phase is "playing", so a failed attempt retries every ~2.5s.
   useEffect(() => {
-    if (!kickoff || room.startedAt == null) return;
-    const remaining = room.startedAt + KICKOFF_MS - (Date.now() + skew);
-    const t = setTimeout(() => setKickoff(false), Math.max(remaining, 0));
-    return () => clearTimeout(t);
-  }, [kickoff, room.startedAt, skew]);
+    if (phase !== "playing" || nowS < gameEnd) return;
+    if (Date.now() - finalizeAtRef.current < 2500) return;
+    finalizeAtRef.current = Date.now();
+    finalizeMatch(room.code)
+      .then(() => refetch())
+      .catch(() => {});
+  }, [phase, nowS, gameEnd, room.code, refetch]);
 
-  // The rival abandoned (or the room got closed elsewhere) → exit gracefully.
+  // The rival abandoned (room CLOSED elsewhere) → exit gracefully.
   useEffect(() => {
-    if (!closed || leavingRef.current) return;
+    if (phase !== "closed" || leavingRef.current) return;
     const t = setTimeout(() => router.replace("/amistoso"), 2600);
     return () => clearTimeout(t);
-  }, [closed, router]);
+  }, [phase, router]);
+
+  const flashNotice = useCallback((msg: string) => {
+    setNotice(msg);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 2400);
+  }, []);
 
   const leave = async () => {
     leavingRef.current = true;
@@ -158,6 +241,70 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
     router.push("/amistoso");
   };
 
+  const exitFinished = () => {
+    leavingRef.current = true;
+    router.replace("/amistoso");
+  };
+
+  const onCellClick = (cellId: string) => {
+    if (phase !== "playing" || penalized || claimsByCell.has(cellId)) return;
+    setSelectedCell((cur) => (cur === cellId ? null : cellId));
+  };
+
+  const onClaimSuccess = useCallback(
+    (res: Extract<Awaited<ReturnType<typeof claimCell>>, { ok: true }>) => {
+      adoptServerNow(res.serverNow);
+      setGame((prev) => ({
+        ...prev,
+        claims: prev.claims.some((c) => c.cellId === res.claim.cellId)
+          ? prev.claims
+          : [...prev.claims, res.claim],
+        myScore: res.myScore,
+        myNation: res.myNation,
+        myNationIdx: res.myNationIdx,
+      }));
+      setSelectedCell(null);
+    },
+    [adoptServerNow],
+  );
+
+  const onChangeNation = async () => {
+    if (phase !== "playing" || penalized) return;
+    setSelectedCell(null);
+    const res = await changeNation(room.code);
+    adoptServerNow(res.serverNow);
+    if (res.ok) {
+      setGame((prev) => ({
+        ...prev,
+        myNation: res.myNation,
+        myNationIdx: res.myNationIdx,
+        myPenaltyUntil: res.myPenaltyUntil,
+      }));
+    }
+  };
+
+  const onFinishEarly = async () => {
+    const res = await finishEarly(room.code);
+    adoptServerNow(res.serverNow);
+    await refetch();
+  };
+
+  // Match clock (counts DOWN) — shared server anchor, identical on both ends.
+  const remaining = Math.max(0, Math.ceil((gameEnd - nowS) / 1000));
+  const clock = `${pad(Math.floor(remaining / 60))}:${pad(remaining % 60)}`;
+  const countdownTick = Math.min(
+    3,
+    Math.max(0, Math.floor((nowS - game.startedAt) / 1000)),
+  );
+  const penaltyLeft = penalized
+    ? Math.max(0, (game.myPenaltyUntil ?? 0) - nowS)
+    : 0;
+
+  const selectedPos = selectedCell
+    ? BOARD_CELLS.find((c) => c.id === selectedCell)?.pos ?? null
+    : null;
+  const cycleAt = game.cycleLength > 0 ? (game.myNationIdx % game.cycleLength) + 1 : 0;
+
   return (
     <div className="game-layer on arena">
       <div className="game">
@@ -165,14 +312,16 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
           <div className="crowd" />
         </div>
 
-        <button className="game-exit" disabled={leaving} onClick={leave}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M11 18l-6-6 6-6" />
-          </svg>{" "}
-          Abandonar partido
-        </button>
+        {phase !== "finished" && (
+          <button className="game-exit" disabled={leaving} onClick={leave}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M11 18l-6-6 6-6" />
+            </svg>{" "}
+            Abandonar partido
+          </button>
+        )}
 
-        {!rivalPresent && !closed && (
+        {!rivalPresent && phase !== "closed" && phase !== "finished" && (
           <div className="conn-chip">
             <span className="cd" />
             EL RIVAL SE ESTÁ RECONECTANDO
@@ -182,29 +331,97 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
         <div className="gscore">
           <ScoreTeam player={me} side={ME_SIDE} />
           <div className="gs-num">
-            <b>0</b>
+            <b>{game.myScore}</b>
           </div>
           <div className="gs-mid">
-            <span className="gs-time">{clock}</span>
+            <span className={`gs-time${phase === "playing" && remaining <= 15 ? " low" : ""}`}>
+              {phase === "countdown" ? "02:00" : clock}
+            </span>
             <span className="gs-half">
               <span className="lv" />
-              1.ª PARTE
+              {phase === "finished" ? "FINAL" : "EN JUEGO"}
             </span>
           </div>
           <div className="gs-num">
-            <b>0</b>
+            <b>{game.rivalScore}</b>
           </div>
           <ScoreTeam player={rival} side={RIVAL_SIDE} away />
         </div>
 
-        <div className="arena-wait">
-          <span className="wd" />
-          <span>
-            {room.gameName
-              ? `${room.gameName.toUpperCase()} · EL DUELO COMIENZA EN BREVE`
-              : "EL DUELO COMIENZA EN BREVE"}
-          </span>
-        </div>
+        {(phase === "playing" || phase === "countdown") && (
+          <div className="gctrl">
+            <div className="gc-prog">
+              <span className="gp-n">
+                {cycleAt}
+                <span>/{game.cycleLength}</span>
+              </span>
+              <span className="gp-l">SELECCIONES</span>
+            </div>
+
+            {penalized ? (
+              <div className="gc-country pen">
+                <span className="pen-ring" style={{ "--p": penaltyLeft / PENALTY_MS } as CSSProperties}>
+                  <b>{Math.ceil(penaltyLeft / 1000)}</b>
+                </span>
+                <span className="gc-ctx">
+                  <small>CAMBIANDO…</small>
+                  <b className="pen-txt">PENALIDAD</b>
+                </span>
+              </div>
+            ) : (
+              <div className="gc-country">
+                <span className="gc-flag">
+                  {game.myNation.flagUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={game.myNation.flagUrl} alt="" referrerPolicy="no-referrer" />
+                  ) : null}
+                </span>
+                <span className="gc-ctx">
+                  <small>SELECCIÓN EN JUEGO</small>
+                  <b>{game.myNation.name.toUpperCase()}</b>
+                </span>
+              </div>
+            )}
+
+            <PlayerSearch
+              key={selectedCell ?? "idle"}
+              code={room.code}
+              cellId={selectedCell}
+              posLabel={selectedPos}
+              nationName={game.myNation.name}
+              disabled={phase !== "playing" || penalized}
+              onSuccess={onClaimSuccess}
+              onServerNow={adoptServerNow}
+              onCellGone={(msg) => {
+                if (msg) {
+                  flashNotice(msg);
+                  refetch();
+                }
+                setSelectedCell(null);
+              }}
+            />
+            {notice && <div className="gc-err">{notice}</div>}
+
+            <button
+              className="gc-change"
+              disabled={phase !== "playing" || penalized}
+              onClick={onChangeNation}
+            >
+              <span className="cc-t">
+                <Sym id="ic-refresh" />
+                CAMBIAR
+              </span>
+              <span className="cc-pen">−5 s</span>
+            </button>
+          </div>
+        )}
+
+        {earlyFinishAvailable && (
+          <button className="early-finish" onClick={onFinishEarly}>
+            <Sym id="ic-whistle" viewBox="0 0 24 24" />
+            VENTAJA INALCANZABLE — TERMINAR PARTIDO
+          </button>
+        )}
 
         <div className="gpitch-wrap">
           <div className="gpitch">
@@ -227,27 +444,65 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
               <span>RIVAL</span>
               <small>{rival.club}</small>
             </div>
-            {BOARD_CELLS.map((cell) => (
-              <div
-                key={cell.id}
-                className="tok empty"
-                style={{ left: `${cell.x}%`, top: `${cell.y}%` }}
-              >
-                <div className="disc">
-                  <span className="pos">{cell.pos}</span>
-                </div>
-              </div>
-            ))}
+            {BOARD_CELLS.map((cell) => {
+              const claim = claimsByCell.get(cell.id);
+              const pos: CSSProperties = { left: `${cell.x}%`, top: `${cell.y}%` };
+              if (claim) {
+                const side = claim.mine ? ME_SIDE : RIVAL_SIDE;
+                return (
+                  <div
+                    key={cell.id}
+                    className={`tok fill just${claim.mine ? " mine" : ""}`}
+                    style={{ ...pos, ...sideStyle(side) }}
+                  >
+                    <div className="disc">
+                      <div className="photo">
+                        {claim.playerImageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={claim.playerImageUrl} alt="" referrerPolicy="no-referrer" />
+                        ) : (
+                          <Silhouette />
+                        )}
+                      </div>
+                    </div>
+                    <span className="nm">{claim.playerName}</span>
+                  </div>
+                );
+              }
+              const selectable = phase === "playing" && !penalized;
+              const sel = cell.id === selectedCell;
+              return (
+                <button
+                  key={cell.id}
+                  className={`tok empty${sel ? " sel" : ""}${selectable ? " free" : ""}`}
+                  style={pos}
+                  disabled={!selectable}
+                  onClick={() => onCellClick(cell.id)}
+                >
+                  <div className="disc">
+                    <span className="pos">{cell.pos}</span>
+                  </div>
+                  {sel && <span className="nm">TU CASILLA</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {kickoff && !closed && (
-          <div className="kickoff">
-            <div className="ko-t">¡COMIENZA EL PARTIDO!</div>
-          </div>
+        {phase === "countdown" && <CountdownIntro tick={countdownTick} />}
+
+        {phase === "finished" && game.result && (
+          <ResultScreen
+            result={game.result}
+            myScore={game.myScore}
+            rivalScore={game.rivalScore}
+            me={me}
+            rival={rival}
+            onExit={exitFinished}
+          />
         )}
 
-        {closed && (
+        {phase === "closed" && (
           <div className="arena-closed">
             <span className="ctx-tag">PARTIDO FINALIZADO</span>
             <div className="ctx-title">
@@ -259,6 +514,159 @@ export function MatchArena({ initial }: { initial: ArenaData }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const SEARCH_DEBOUNCE_MS = 220;
+
+/**
+ * The claim flow: disabled until a free cell is selected, autofocused on
+ * activation (the parent remounts it per selection via `key`, so state resets
+ * naturally), dropdown from 3 characters (most valuable players first),
+ * keyboard-navigable; picking a player submits the claim immediately —
+ * a wrong pick just shakes and lets you retry (no penalty by design).
+ */
+function PlayerSearch({
+  code,
+  cellId,
+  posLabel,
+  nationName,
+  disabled,
+  onSuccess,
+  onServerNow,
+  onCellGone,
+}: {
+  code: string;
+  cellId: string | null;
+  posLabel: string | null;
+  nationName: string;
+  disabled: boolean;
+  onSuccess: (res: Extract<Awaited<ReturnType<typeof claimCell>>, { ok: true }>) => void;
+  onServerNow: (serverNow: number) => void;
+  /** Drop the selection; with a message, the board moved (cell lost / ended). */
+  onCellGone: (notice?: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<PlayerHit[]>([]);
+  const [highlight, setHighlight] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const seqRef = useRef(0);
+
+  const active = cellId != null && !disabled;
+
+  // Debounced search with a sequence guard against out-of-order responses.
+  // Short/cleared queries empty the dropdown from the change handler, so the
+  // effect only ever schedules real lookups.
+  useEffect(() => {
+    if (!active || query.trim().length < 3) return;
+    const seq = ++seqRef.current;
+    const t = setTimeout(async () => {
+      const found = await searchPlayers(query);
+      if (seqRef.current !== seq) return;
+      setHits(found);
+      setHighlight(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query, active]);
+
+  const submit = async (player: PlayerHit) => {
+    if (!cellId || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    const res = await claimCell(code, cellId, player.id);
+    setSubmitting(false);
+    onServerNow(res.serverNow);
+    if (res.ok) {
+      onSuccess(res);
+      return;
+    }
+    if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
+      // The board moved under us — the parent resyncs and shows the notice.
+      onCellGone(CLAIM_ERROR_COPY[res.code]);
+      return;
+    }
+    // Wrong guess: keep the query, let them retry instantly.
+    setError(CLAIM_ERROR_COPY[res.code]);
+    inputRef.current?.focus();
+  };
+
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    setError(null);
+    if (value.trim().length < 3) {
+      seqRef.current++;
+      setHits([]);
+      setHighlight(0);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => Math.min(h + 1, hits.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (hits[highlight]) submit(hits[highlight]);
+    } else if (e.key === "Escape") {
+      if (query) onQueryChange("");
+      else onCellGone();
+    }
+  };
+
+  return (
+    <div className="psearch">
+      <div className={`gc-input${active ? "" : " off"}${error ? " err" : ""}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input
+          ref={inputRef}
+          value={query}
+          disabled={!active || submitting}
+          autoFocus={active}
+          placeholder={
+            active
+              ? `${posLabel} de ${nationName}…`
+              : "Elige una casilla libre del campo"
+          }
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
+      {error && <div className="gc-err">{error}</div>}
+      {active && hits.length > 0 && (
+        <div className="ps-drop" role="listbox">
+          {hits.map((h, i) => (
+            <button
+              key={h.id}
+              role="option"
+              aria-selected={i === highlight}
+              className={`ps-row${i === highlight ? " on" : ""}`}
+              onMouseEnter={() => setHighlight(i)}
+              onClick={() => submit(h)}
+              disabled={submitting}
+            >
+              <span className="ps-ph">
+                {h.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={h.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                ) : (
+                  <Silhouette />
+                )}
+              </span>
+              <span className="ps-nm">{h.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

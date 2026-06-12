@@ -99,7 +99,9 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
   if (!userId) return { ok: false, error: "No autenticado" };
 
   const room = await prisma.matchRoom.findUnique({ where: { code } });
-  if (!room || room.status === "CLOSED") return { ok: true };
+  // FINISHED is a legitimate result — it must never flip to CLOSED (that
+  // would show "el rival se retiró" over the result screen).
+  if (!room || room.status === "CLOSED" || room.status === "FINISHED") return { ok: true };
 
   const now = new Date();
   if (room.hostId === userId) {
@@ -112,8 +114,10 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
         where: { roomId: room.id, status: "PENDING" },
         data: { status: "CANCELLED", respondedAt: now },
       }),
-      prisma.matchRoom.update({
-        where: { id: room.id },
+      // Status-guarded: lose the race against a concurrent finalize and the
+      // FINISHED result sticks.
+      prisma.matchRoom.updateMany({
+        where: { id: room.id, status: { in: ["OPEN", "READY", "IN_GAME"] } },
         data: { status: "CLOSED", updatedAt: now },
       }),
     ]);
@@ -123,15 +127,15 @@ export async function leaveRoom(code: string): Promise<ActionResult> {
     ]);
   } else if (room.guestId === userId) {
     if (room.status === "IN_GAME") {
-      await prisma.matchRoom.update({
-        where: { id: room.id },
+      await prisma.matchRoom.updateMany({
+        where: { id: room.id, status: "IN_GAME" },
         data: { status: "CLOSED", updatedAt: now },
       });
     } else {
       // Pre-kickoff: free the seat and reset the entry timeline (the room may
       // be mid-cinematic — the host's client falls back to the invite lobby).
-      await prisma.matchRoom.update({
-        where: { id: room.id },
+      await prisma.matchRoom.updateMany({
+        where: { id: room.id, status: "READY" },
         data: { guestId: null, status: "OPEN", readyAt: null, startedAt: null, updatedAt: now },
       });
     }
@@ -328,7 +332,7 @@ export async function myMatchInviteToasts(): Promise<MatchInviteToast[]> {
  * current status + timeline anchors + the rival's card (if seated) + pending
  * invite targets. `serverNow` lets the client correct its clock skew. */
 export async function getRoomPeers(code: string): Promise<{
-  status: "OPEN" | "READY" | "IN_GAME" | "CLOSED";
+  status: "OPEN" | "READY" | "IN_GAME" | "CLOSED" | "FINISHED";
   readyAt: number | null;
   startedAt: number | null;
   serverNow: number;

@@ -171,6 +171,7 @@ enum MatchRoomStatus {
   READY // both seats taken — match found
   IN_GAME // entry cinematic finished — both players in the game room
   CLOSED // abandoned by the host / superseded
+  FINISHED // played to completion (result screen)
 
   @@map("match_room_status")
 }
@@ -197,6 +198,17 @@ model MatchRoom {
   /// Server timestamp of the READY → IN_GAME promotion (first player landing
   /// in the game room after the cinematic).
   startedAt  DateTime?       @map("started_at")
+  /// "Once Mundialista" deck: national_team_ids shuffled once at the IN_GAME
+  /// promotion. Both seats walk the SAME ordered cycle independently
+  /// (active nation = nationCycle[idx % length]).
+  nationCycle       Int[]     @default([]) @map("nation_cycle")
+  hostNationIdx     Int       @default(0) @map("host_nation_idx")
+  guestNationIdx    Int       @default(0) @map("guest_nation_idx")
+  /// Nation-change penalty: claims blocked and next nation hidden until then.
+  hostPenaltyUntil  DateTime? @map("host_penalty_until")
+  guestPenaltyUntil DateTime? @map("guest_penalty_until")
+  /// Server timestamp of the IN_GAME → FINISHED promotion.
+  finishedAt        DateTime? @map("finished_at")
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @default(now()) @map("updated_at")
 
@@ -205,6 +217,7 @@ model MatchRoom {
   guest Profile? @relation("JoinedRooms", fields: [guestId], references: [id], onDelete: SetNull)
 
   invites MatchInvite[]
+  claims  MatchClaim[]
 
   @@index([hostId, status])
   @@index([guestId])
@@ -242,6 +255,28 @@ model MatchInvite {
   @@index([receiverId, status])
   @@index([senderId, status])
   @@map("match_invites")
+}
+
+/// One claimed cell of the shared 22-cell "Once Mundialista" board. The unique
+/// constraints settle races: first valid claim wins the cell, and a footballer
+/// can appear at most once per board. A player's score is the COUNT of their
+/// claims — derived, never stored.
+model MatchClaim {
+  id        String   @id @default(cuid())
+  roomId    String   @map("room_id")
+  /// Board cell id from src/data/gameboard.ts (e.g. "l-gk", "r-f2").
+  cellId    String   @map("cell_id")
+  playerId  Int      @map("player_id")
+  claimedBy String   @map("claimed_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  room   MatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  player FutPlayer @relation(fields: [playerId], references: [playerId])
+
+  @@unique([roomId, cellId])
+  @@unique([roomId, playerId])
+  @@index([roomId])
+  @@map("match_claims")
 }
 
 /// Lifecycle of a friend request between two presidents.
@@ -424,6 +459,7 @@ model FutPlayer {
   nationalTeams PlayerNationalTeam[]
   transfers     Transfer[]
   awards        AwardWinner[]
+  matchClaims   MatchClaim[]
 
   @@index([name])
   @@index([countryOfCitizenship])
