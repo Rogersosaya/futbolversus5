@@ -14,7 +14,6 @@ import {
   COUNTDOWN_MS,
   DEFAULT_TOP,
   DIFFICULTY_TOP,
-  GAME_MS,
   PENALTY_MS,
   POS_SUBPOSITIONS,
   isLeadUnreachable,
@@ -50,6 +49,8 @@ export interface MatchGameState {
   status: "IN_GAME" | "FINISHED" | "CLOSED";
   /** Epoch ms; countdown = [startedAt, startedAt+COUNTDOWN_MS). */
   startedAt: number;
+  /** Match duration in seconds; 0 = no time limit. */
+  durationS: number;
   finishedAt: number | null;
   serverNow: number;
   claims: ClaimView[];
@@ -107,11 +108,14 @@ const idxOf = (room: MatchRoom, role: Role) =>
 const penaltyOf = (room: MatchRoom, role: Role) =>
   role === "host" ? room.hostPenaltyUntil : room.guestPenaltyUntil;
 
-/** Playing window (epoch ms) derived from the IN_GAME promotion anchor. */
+/** Playing window (epoch ms) derived from the IN_GAME promotion anchor.
+ * durationS 0 = no time limit → gameEnd Infinity, so every "past the end"
+ * check is naturally false and the match only ends by board/lead/abandon. */
 const gameWindow = (room: MatchRoom) => {
   const started = room.startedAt?.getTime() ?? 0;
   const gameStart = started + COUNTDOWN_MS;
-  return { gameStart, gameEnd: gameStart + GAME_MS };
+  const gameEnd = room.durationS > 0 ? gameStart + room.durationS * 1000 : Infinity;
+  return { gameStart, gameEnd };
 };
 
 async function nationViewOf(room: MatchRoom, idx: number): Promise<NationView> {
@@ -269,6 +273,7 @@ export async function getMatchGameStateCore(
   return {
     status,
     startedAt,
+    durationS: room.durationS,
     finishedAt: room.finishedAt?.getTime() ?? null,
     serverNow: Date.now(),
     claims: claims.map((c) => ({

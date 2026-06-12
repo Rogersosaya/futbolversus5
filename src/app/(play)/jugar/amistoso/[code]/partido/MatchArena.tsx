@@ -32,7 +32,7 @@ import type {
 } from "@/actions/match-game";
 import type { SelfMatchCard } from "@/actions/friends";
 import { BOARD_CELLS } from "@/data/gameboard";
-import { COUNTDOWN_MS, GAME_MS, PENALTY_MS, isLeadUnreachable } from "@/data/match-game";
+import { COUNTDOWN_MS, PENALTY_MS, isLeadUnreachable } from "@/data/match-game";
 
 import { CountdownIntro } from "./CountdownIntro";
 import { ResultScreen } from "./ResultScreen";
@@ -44,8 +44,6 @@ const RIVAL_SIDE = { own: "#e8344f", glow: "rgba(232,52,79,.75)" };
 
 const sideStyle = (s: { own: string; glow: string }): CSSProperties =>
   ({ "--own": s.own, "--own-glow": s.glow } as CSSProperties);
-
-const pad = (n: number) => String(n).padStart(2, "0");
 
 const CLAIM_ERROR_COPY: Record<ClaimErrorCode, string> = {
   WRONG_POSITION: "No juega en esa posición",
@@ -117,16 +115,18 @@ export function MatchArena({
   const [nowS, setNowS] = useState(() => Date.now() + (initialGame.serverNow - Date.now()));
   const [rivalPresent, setRivalPresent] = useState(true);
   const [leaving, setLeaving] = useState(false);
-  /** Transient board-level notice (e.g. "el rival ganó la casilla"). */
-  const [notice, setNotice] = useState<string | null>(null);
+  /** Top-right rejection toasts explaining WHY a pick didn't count. */
+  const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
 
   const leavingRef = useRef(false);
   /** Last full-time finalize attempt (epoch ms) — throttles the retry loop. */
   const finalizeAtRef = useRef(0);
-  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastSeqRef = useRef(0);
 
+  const noLimit = game.durationS === 0;
   const gameStart = game.startedAt + COUNTDOWN_MS;
-  const gameEnd = gameStart + GAME_MS;
+  /** Infinity when the host chose "sin límite" — every timer check goes dark. */
+  const gameEnd = noLimit ? Infinity : gameStart + game.durationS * 1000;
 
   const phase: Phase =
     game.status === "CLOSED"
@@ -228,10 +228,10 @@ export function MatchArena({
     return () => clearTimeout(t);
   }, [phase, router]);
 
-  const flashNotice = useCallback((msg: string) => {
-    setNotice(msg);
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = setTimeout(() => setNotice(null), 2400);
+  const pushToast = useCallback((msg: string) => {
+    const id = ++toastSeqRef.current;
+    setToasts((prev) => [...prev.slice(-3), { id, msg }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
   }, []);
 
   const leave = async () => {
@@ -289,9 +289,14 @@ export function MatchArena({
     await refetch();
   };
 
-  // Match clock (counts DOWN) — shared server anchor, identical on both ends.
-  const remaining = Math.max(0, Math.ceil((gameEnd - nowS) / 1000));
-  const clock = `${pad(Math.floor(remaining / 60))}:${pad(remaining % 60)}`;
+  // Match clock (plain seconds, counting DOWN) — shared server anchor,
+  // identical on both ends. "Sin límite" shows ∞ and never expires.
+  const remaining = noLimit ? 0 : Math.max(0, Math.ceil((gameEnd - nowS) / 1000));
+  const clock = noLimit
+    ? "∞"
+    : String(phase === "countdown" ? game.durationS : remaining);
+  const clockLabel =
+    phase === "finished" ? "FINAL" : noLimit ? "SIN LÍMITE" : "SEGUNDOS";
   const countdownTick = Math.min(
     3,
     Math.max(0, Math.floor((nowS - game.startedAt) / 1000)),
@@ -303,7 +308,6 @@ export function MatchArena({
   const selectedPos = selectedCell
     ? BOARD_CELLS.find((c) => c.id === selectedCell)?.pos ?? null
     : null;
-  const cycleAt = game.cycleLength > 0 ? (game.myNationIdx % game.cycleLength) + 1 : 0;
 
   return (
     <div className="game-layer on arena">
@@ -328,21 +332,38 @@ export function MatchArena({
           </div>
         )}
 
+        {toasts.length > 0 && (
+          <div className="gtoasts">
+            {toasts.map((t) => (
+              <div key={t.id} className="gtoast">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                <span>{t.msg}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Broadcast-style scoreboard: club blocks at the edges, side-colored
+            goal digits, and the (seconds) clock owning the center. */}
         <div className="gscore">
           <ScoreTeam player={me} side={ME_SIDE} />
-          <div className="gs-num">
+          <div className="gs-num" style={sideStyle(ME_SIDE)}>
             <b>{game.myScore}</b>
           </div>
           <div className="gs-mid">
-            <span className={`gs-time${phase === "playing" && remaining <= 15 ? " low" : ""}`}>
-              {phase === "countdown" ? "02:00" : clock}
+            <span
+              className={`gs-time${!noLimit && phase === "playing" && remaining <= 15 ? " low" : ""}`}
+            >
+              {clock}
             </span>
             <span className="gs-half">
               <span className="lv" />
-              {phase === "finished" ? "FINAL" : "EN JUEGO"}
+              {clockLabel}
             </span>
           </div>
-          <div className="gs-num">
+          <div className="gs-num" style={sideStyle(RIVAL_SIDE)}>
             <b>{game.rivalScore}</b>
           </div>
           <ScoreTeam player={rival} side={RIVAL_SIDE} away />
@@ -350,13 +371,14 @@ export function MatchArena({
 
         {(phase === "playing" || phase === "countdown") && (
           <div className="gctrl">
+            {/* Deck progress ("1/15 SELECCIONES") hidden for now per request.
             <div className="gc-prog">
               <span className="gp-n">
-                {cycleAt}
+                {(game.cycleLength > 0 ? (game.myNationIdx % game.cycleLength) + 1 : 0)}
                 <span>/{game.cycleLength}</span>
               </span>
               <span className="gp-l">SELECCIONES</span>
-            </div>
+            </div> */}
 
             {penalized ? (
               <div className="gc-country pen">
@@ -392,15 +414,12 @@ export function MatchArena({
               disabled={phase !== "playing" || penalized}
               onSuccess={onClaimSuccess}
               onServerNow={adoptServerNow}
-              onCellGone={(msg) => {
-                if (msg) {
-                  flashNotice(msg);
-                  refetch();
-                }
+              onReject={pushToast}
+              onCellGone={(lost) => {
+                if (lost) refetch();
                 setSelectedCell(null);
               }}
             />
-            {notice && <div className="gc-err">{notice}</div>}
 
             <button
               className="gc-change"
@@ -535,6 +554,7 @@ function PlayerSearch({
   disabled,
   onSuccess,
   onServerNow,
+  onReject,
   onCellGone,
 }: {
   code: string;
@@ -544,19 +564,36 @@ function PlayerSearch({
   disabled: boolean;
   onSuccess: (res: Extract<Awaited<ReturnType<typeof claimCell>>, { ok: true }>) => void;
   onServerNow: (serverNow: number) => void;
-  /** Drop the selection; with a message, the board moved (cell lost / ended). */
-  onCellGone: (notice?: string) => void;
+  /** Surface a rejection toast explaining WHY the pick didn't count. */
+  onReject: (msg: string) => void;
+  /** Drop the selection; `lost` = the board moved under us (resync needed). */
+  onCellGone: (lost?: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlayerHit[]>([]);
   const [highlight, setHighlight] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /** Only drives the input's error shake — the cause goes to the toasts. */
+  const [error, setError] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const seqRef = useRef(0);
 
   const active = cellId != null && !disabled;
+
+  // Spell out the cause with the actual pick so the player learns the rule.
+  const rejectMessage = (code: ClaimErrorCode, player: PlayerHit): string => {
+    switch (code) {
+      case "WRONG_NATION":
+        return `${player.name} no juega para ${nationName}`;
+      case "WRONG_POSITION":
+        return `${player.name} no juega de ${posLabel ?? "esa posición"}`;
+      case "PLAYER_USED":
+        return `${player.name} ya está en el campo, no se puede repetir`;
+      default:
+        return CLAIM_ERROR_COPY[code];
+    }
+  };
 
   // Debounced search with a sequence guard against out-of-order responses.
   // Short/cleared queries empty the dropdown from the change handler, so the
@@ -576,7 +613,7 @@ function PlayerSearch({
   const submit = async (player: PlayerHit) => {
     if (!cellId || submitting) return;
     setSubmitting(true);
-    setError(null);
+    setError(false);
     const res = await claimCell(code, cellId, player.id);
     setSubmitting(false);
     onServerNow(res.serverNow);
@@ -584,19 +621,20 @@ function PlayerSearch({
       onSuccess(res);
       return;
     }
+    onReject(rejectMessage(res.code, player));
     if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
-      // The board moved under us — the parent resyncs and shows the notice.
-      onCellGone(CLAIM_ERROR_COPY[res.code]);
+      // The board moved under us — the parent resyncs and drops the selection.
+      onCellGone(true);
       return;
     }
-    // Wrong guess: keep the query, let them retry instantly.
-    setError(CLAIM_ERROR_COPY[res.code]);
+    // Wrong guess: shake, keep the query, let them retry instantly.
+    setError(true);
     inputRef.current?.focus();
   };
 
   const onQueryChange = (value: string) => {
     setQuery(value);
-    setError(null);
+    setError(false);
     if (value.trim().length < 3) {
       seqRef.current++;
       setHits([]);
@@ -641,7 +679,6 @@ function PlayerSearch({
           onKeyDown={onKeyDown}
         />
       </div>
-      {error && <div className="gc-err">{error}</div>}
       {active && hits.length > 0 && (
         <div className="ps-drop" role="listbox">
           {hits.map((h, i) => (

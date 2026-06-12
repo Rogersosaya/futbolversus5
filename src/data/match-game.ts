@@ -4,8 +4,9 @@
 
 /** 3 → 2 → 1 → ¡A JUGAR! intro, derived from the room's startedAt. */
 export const COUNTDOWN_MS = 4_000;
-/** Playing time once the countdown ends. */
-export const GAME_MS = 120_000;
+/** Host-selectable match durations (seconds); 0 = no time limit. */
+export const DURATION_OPTIONS = [60, 120, 240, 0] as const;
+export const DEFAULT_DURATION_S = 120;
 /** Nation-change penalty: claims blocked, next nation hidden until it ends. */
 export const PENALTY_MS = 5_000;
 /** Server-side grace after the buzzer so in-flight claims still land. */

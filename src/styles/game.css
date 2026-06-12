@@ -24,11 +24,17 @@
 .gs-team .gs-nm{font-family:var(--font-d);font-weight:700;font-size:23px;letter-spacing:.05em;color:#f2f5fa}
 .gs-team .gs-pr{font-family:var(--font-u);font-weight:400;font-size:14px;color:var(--txt-3)}
 .gs-team .gs-bar{width:5px;align-self:stretch;margin:14px 0;border-radius:4px}
-.gs-num{display:flex;align-items:center;justify-content:center;min-width:74px;background:rgba(6,9,14,.97)}
-.gs-num b{font-family:var(--font-u);font-weight:700;font-size:50px;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
-.gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 20px;background:#0c1018;min-width:118px;
-  border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06)}
-.gs-time{font-family:var(--font-u);font-weight:700;font-size:32px;color:#fff;letter-spacing:.04em;line-height:.9;font-variant-numeric:tabular-nums}
+/* goal digits: broadcast-big, tinted with the owning side's color and
+   underlined by its bar so each score reads unmistakably as "that player's" */
+.gs-num{display:flex;align-items:center;justify-content:center;min-width:96px;background:rgba(6,9,14,.97);position:relative}
+.gs-num b{font-family:var(--font-u);font-weight:700;font-size:58px;line-height:1;font-variant-numeric:tabular-nums;
+  color:var(--own,#fff);text-shadow:0 0 22px var(--own-glow,transparent)}
+.gs-num::after{content:"";position:absolute;left:18px;right:18px;bottom:9px;height:4px;border-radius:3px;
+  background:var(--own,transparent);box-shadow:0 0 10px var(--own-glow,transparent)}
+/* the clock owns the center: wide, fixed, never squeezed by long club names */
+.gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 24px;background:#0c1018;min-width:152px;
+  border-left:1px solid rgba(255,255,255,.12);border-right:1px solid rgba(255,255,255,.12)}
+.gs-time{font-family:var(--font-u);font-weight:700;font-size:44px;color:#fff;letter-spacing:.02em;line-height:.9;font-variant-numeric:tabular-nums}
 .gs-half{display:flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.18em;color:var(--gold)}
 .gs-half .lv{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 7px var(--gold);animation:lgpulse 1.3s ease-in-out infinite}
 

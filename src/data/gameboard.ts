@@ -37,18 +37,20 @@ export interface BoardCell {
   pos: string;
 }
 
+// The left team attacks rightward, so from its own goal the LEFT flank is the
+// TOP of the screen — LI/EI up, LD/ED down (mirror of the right team).
 const LEFT: BoardCell[] = [
   { id: "l-gk", x: 6, y: 50, pos: "POR" },
-  { id: "l-d1", x: 18, y: 15, pos: "LD" },
+  { id: "l-d1", x: 18, y: 15, pos: "LI" },
   { id: "l-d2", x: 18, y: 38, pos: "DFC" },
   { id: "l-d3", x: 18, y: 62, pos: "DFC" },
-  { id: "l-d4", x: 18, y: 85, pos: "LI" },
+  { id: "l-d4", x: 18, y: 85, pos: "LD" },
   { id: "l-m1", x: 28, y: 30, pos: "MCD" },
   { id: "l-m2", x: 36, y: 50, pos: "MO" },
   { id: "l-m3", x: 28, y: 70, pos: "MCD" },
-  { id: "l-f1", x: 42, y: 22, pos: "ED" },
+  { id: "l-f1", x: 42, y: 22, pos: "EI" },
   { id: "l-f2", x: 42, y: 50, pos: "DC" },
-  { id: "l-f3", x: 42, y: 78, pos: "EI" },
+  { id: "l-f3", x: 42, y: 78, pos: "ED" },
 ];
 
 const RIGHT: BoardCell[] = [

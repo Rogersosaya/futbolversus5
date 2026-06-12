@@ -12,6 +12,7 @@ import {
   type ActionResult,
 } from "@/actions/matchroom";
 import { toCards, getMatchCard, type PlayerCard, type SelfMatchCard } from "@/actions/friends";
+import { DEFAULT_DURATION_S, DURATION_OPTIONS } from "@/data/match-game";
 
 /** One floating invite notification (either direction). */
 export interface MatchInviteToast {
@@ -52,9 +53,17 @@ async function requireUser(): Promise<string | null> {
 export async function createFriendlyRoom(
   gameId: number | null,
   difficulty: string | null,
+  durationS?: number,
 ): Promise<void> {
   const userId = await requireUser();
   if (!userId) redirect("/login");
+
+  // Only the offered durations are valid (0 = no time limit).
+  const duration = DURATION_OPTIONS.includes(
+    durationS as (typeof DURATION_OPTIONS)[number],
+  )
+    ? (durationS as number)
+    : DEFAULT_DURATION_S;
 
   const footprint = await activeRoomFootprint(userId);
   await prisma.$transaction(async (tx) => {
@@ -70,7 +79,7 @@ export async function createFriendlyRoom(
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       await prisma.matchRoom.create({
-        data: { code, hostId: userId, gameId, difficulty },
+        data: { code, hostId: userId, gameId, difficulty, durationS: duration },
       });
       break;
     } catch (e) {

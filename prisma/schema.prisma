@@ -189,6 +189,8 @@ model MatchRoom {
   /// Minigame + difficulty chosen by the host on /amistoso.
   gameId     Int?            @map("game_id")
   difficulty String?
+  /// Match duration in seconds chosen by the host; 0 = no time limit.
+  durationS  Int             @default(120) @map("duration_s")
   hostId     String          @map("host_id") @db.Uuid
   guestId    String?         @map("guest_id") @db.Uuid
   /// Server timestamp stamped when both players are present in the READY
