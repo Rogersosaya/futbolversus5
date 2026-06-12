@@ -72,8 +72,10 @@ function ScoreTeam({
   side: { own: string; glow: string };
   away?: boolean;
 }) {
+  // NOTE: never use bare `home`/`away` classes here — the menu shell's
+  // global `.home{position:absolute;inset:0}` (home.css) hijacks them.
   return (
-    <div className={`gs-team ${away ? "away" : "home"}`}>
+    <div className={`gs-team${away ? " gs-away" : ""}`}>
       <span className="gs-cr">
         {player.art ? <CollectibleGlyph c={player.art} /> : <ShieldArt id={null} />}
       </span>
