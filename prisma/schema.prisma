@@ -211,6 +211,12 @@ model MatchRoom {
   guestPenaltyUntil DateTime? @map("guest_penalty_until")
   /// Server timestamp of the IN_GAME → FINISHED promotion.
   finishedAt        DateTime? @map("finished_at")
+  /// Rematch handshake (FINISHED rooms only): each seat stamps its request;
+  /// when both are stamped a fresh room is created and its code published
+  /// here exactly once — both clients follow it to the new match.
+  hostRematchAt     DateTime? @map("host_rematch_at")
+  guestRematchAt    DateTime? @map("guest_rematch_at")
+  rematchCode       String?   @map("rematch_code")
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @default(now()) @map("updated_at")
 

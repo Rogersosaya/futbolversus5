@@ -11,11 +11,13 @@ import {
   finalizeIfDueCore,
   finishEarlyCore,
   getMatchGameStateCore,
+  requestRematchCore,
   searchPlayersCore,
   type ChangeNationResult,
   type ClaimResult,
   type MatchGameState,
   type PlayerHit,
+  type RematchState,
 } from "@/actions/match-game";
 import type { MatchRoom } from "@/generated/prisma/client";
 
@@ -78,6 +80,15 @@ export async function finishEarly(code: string): Promise<{ ok: boolean; serverNo
   if (!room) return { ok: false, serverNow: Date.now() };
   const ok = await finishEarlyCore(room, userId);
   return { ok, serverNow: Date.now() };
+}
+
+/** Stamp my rematch request on a FINISHED room (both stamps → new match). */
+export async function requestRematch(code: string): Promise<RematchState | null> {
+  const userId = await requireUser();
+  if (!userId) return null;
+  const room = await memberRoom(code, userId);
+  if (!room) return null;
+  return requestRematchCore(room, userId);
 }
 
 /** Timer-driven finish; both clients call it at 0:00 (idempotent). */

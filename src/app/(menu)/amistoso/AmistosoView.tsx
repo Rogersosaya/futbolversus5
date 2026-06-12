@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Icon } from "@/components/svg";
 import { MiniGameModal } from "@/components/MiniGameModal";
 import { createFriendlyRoom } from "@/app/actions/matchroom";
+import { DIFFICULTY_LABELS } from "@/data/match-game";
 import type { Game } from "@/generated/prisma/client";
 
 /** Host-selectable match durations (seconds); 0 = no time limit. */
@@ -30,12 +31,6 @@ export function AmistosoView({ games }: { games: Game[] }) {
   };
 
   const game = selected !== null ? games.find((g) => g.id === selected) ?? null : null;
-
-  const DIFFICULTY_LABELS: Record<string, string> = {
-    "Fácil": "Canterano",
-    "Medio": "Titular",
-    "Difícil": "Leyenda",
-  };
 
   const handleOpen = (g: Game) => {
     setSelected(g.id);

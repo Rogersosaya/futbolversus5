@@ -22,6 +22,7 @@ import {
   finalizeMatch,
   finishEarly,
   getMatchGameState,
+  requestRematch,
   searchPlayers,
 } from "@/app/actions/match-game";
 import type { ArenaData } from "@/actions/matchroom";
@@ -230,6 +231,14 @@ export function MatchArena({
     return () => clearTimeout(t);
   }, [phase, router]);
 
+  // Rematch agreed → both clients follow the fresh room's code. The new match
+  // page loads its own snapshot and the synchronized 3-2-1 runs from there.
+  useEffect(() => {
+    if (!game.rematchCode || leavingRef.current) return;
+    leavingRef.current = true;
+    router.replace(`/jugar/amistoso/${game.rematchCode}/partido`);
+  }, [game.rematchCode, router]);
+
   const pushToast = useCallback((msg: string) => {
     const id = ++toastSeqRef.current;
     setToasts((prev) => [...prev.slice(-3), { id, msg }]);
@@ -289,6 +298,18 @@ export function MatchArena({
     const res = await finishEarly(room.code);
     adoptServerNow(res.serverNow);
     await refetch();
+  };
+
+  const onRematch = async () => {
+    const res = await requestRematch(room.code);
+    if (!res) return;
+    adoptServerNow(res.serverNow);
+    setGame((prev) => ({
+      ...prev,
+      myRematch: res.myRematch,
+      rivalRematch: res.rivalRematch,
+      rematchCode: res.rematchCode,
+    }));
   };
 
   // Match clock (plain seconds, counting DOWN) — shared server anchor,
@@ -407,8 +428,9 @@ export function MatchArena({
               </div>
             )}
 
+            {/* No `key` remount on cell change: re-targeting a cell must keep
+                the typed query and its dropdown intact. */}
             <PlayerSearch
-              key={selectedCell ?? "idle"}
               code={room.code}
               cellId={selectedCell}
               posLabel={selectedPos}
@@ -519,6 +541,10 @@ export function MatchArena({
             rivalScore={game.rivalScore}
             me={me}
             rival={rival}
+            myRematch={game.myRematch}
+            rivalRematch={game.rivalRematch}
+            rematchAgreed={game.rematchCode != null}
+            onRematch={onRematch}
             onExit={exitFinished}
           />
         )}
@@ -583,6 +609,13 @@ function PlayerSearch({
 
   const active = cellId != null && !disabled;
 
+  // Focus follows the selection — including re-targeting another cell, which
+  // must NOT reset the typed query or its dropdown (the component stays
+  // mounted; only a successful claim clears it, in the submit handler).
+  useEffect(() => {
+    if (active) inputRef.current?.focus();
+  }, [active, cellId]);
+
   // Spell out the cause with the actual pick so the player learns the rule.
   const rejectMessage = (code: ClaimErrorCode, player: PlayerHit): string => {
     switch (code) {
@@ -620,6 +653,11 @@ function PlayerSearch({
     setSubmitting(false);
     onServerNow(res.serverNow);
     if (res.ok) {
+      // Fresh search for the next cell.
+      seqRef.current++;
+      setQuery("");
+      setHits([]);
+      setHighlight(0);
       onSuccess(res);
       return;
     }
@@ -671,7 +709,6 @@ function PlayerSearch({
           ref={inputRef}
           value={query}
           disabled={!active || submitting}
-          autoFocus={active}
           placeholder={
             active
               ? `${posLabel} de ${nationName}…`

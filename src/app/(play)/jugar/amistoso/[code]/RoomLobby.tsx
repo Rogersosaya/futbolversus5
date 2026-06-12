@@ -32,12 +32,7 @@ import {
 } from "@/app/actions/matchroom";
 import type { RoomLobbyData } from "@/actions/matchroom";
 import type { PlayerCard, SelfMatchCard } from "@/actions/friends";
-
-const DIFFICULTY_LABELS: Record<string, string> = {
-  Fácil: "Canterano",
-  Medio: "Titular",
-  Difícil: "Leyenda",
-};
+import { DIFFICULTY_LABELS } from "@/data/match-game";
 
 const BackArrowIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

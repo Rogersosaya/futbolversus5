@@ -138,6 +138,8 @@ table.tm-tbl{width:100%;border-collapse:collapse}
   font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:.08em;color:var(--txt-3);transition:all .18s}
 .ht:hover{color:var(--txt)}.ht.on{background:var(--red);border-color:var(--red);color:#fff}
 .hist-list{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.hist-empty{padding:26px 16px;border-radius:10px;border:1px dashed var(--line);text-align:center;
+  font-family:var(--font-u);font-size:15px;color:var(--txt-3)}
 .hrow{display:flex;align-items:center;gap:16px;padding:13px 16px;border-radius:10px;border:1px solid var(--line-soft);background:rgba(255,255,255,.02)}
 .hrow .h-ic{width:40px;height:40px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;color:#fff}
 .hrow .h-ic svg{width:21px;height:21px}
@@ -151,7 +153,7 @@ table.tm-tbl{width:100%;border-collapse:collapse}
 .h-res.win{background:rgba(70,194,117,.18);color:#7bdc9f;border:1px solid rgba(70,194,117,.4)}
 .h-res.loss{background:rgba(224,85,107,.16);color:#f0939f;border:1px solid rgba(224,85,107,.4)}
 .h-res.draw{background:rgba(232,207,142,.16);color:var(--gold);border:1px solid rgba(232,207,142,.35)}
-.h-d{font-weight:400;font-size:14px;color:var(--txt-4);min-width:66px;text-align:right}
+.h-d{font-weight:400;font-size:14px;color:var(--txt-4);min-width:112px;text-align:right;white-space:nowrap}
 
 /* ===== Mi Club · Amigos ===== */
 .club-friends{margin-top:30px;border-top:1px solid var(--line-soft);padding-top:22px}

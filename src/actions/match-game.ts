@@ -8,6 +8,8 @@
 // whole game state survives reloads and reconnections.
 import { prisma } from "@/lib/prisma";
 import { notifyRooms } from "@/lib/realtime-server";
+import { generateRoomCode } from "@/lib/room-code";
+import { TIMELINE_TOTAL_MS } from "@/lib/match-timeline";
 import { BOARD_CELLS } from "@/data/gameboard";
 import {
   CLAIM_GRACE_MS,
@@ -62,6 +64,11 @@ export interface MatchGameState {
   myPenaltyUntil: number | null;
   /** Non-null iff FINISHED. */
   result: "win" | "lose" | "draw" | null;
+  /** Rematch handshake (meaningful once FINISHED). */
+  myRematch: boolean;
+  rivalRematch: boolean;
+  /** Code of the fresh rematch room once both seats agreed. */
+  rematchCode: string | null;
 }
 
 export type ClaimErrorCode =
@@ -289,6 +296,9 @@ export async function getMatchGameStateCore(
     cycleLength: room.nationCycle.length,
     myPenaltyUntil: penaltyOf(room, role)?.getTime() ?? null,
     result,
+    myRematch: (role === "host" ? room.hostRematchAt : room.guestRematchAt) != null,
+    rivalRematch: (role === "host" ? room.guestRematchAt : room.hostRematchAt) != null,
+    rematchCode: room.rematchCode,
   };
 }
 
@@ -497,6 +507,81 @@ export async function finishEarlyCore(room: MatchRoom, userId: string): Promise<
 
   if (!isLeadUnreachable(leader, other, free)) return false;
   return finalizeCore(room.id);
+}
+
+export interface RematchState {
+  myRematch: boolean;
+  rivalRematch: boolean;
+  rematchCode: string | null;
+  serverNow: number;
+}
+
+/**
+ * Stamp this seat's rematch request on a FINISHED room; when both seats have
+ * stamped, create the fresh room (same seats and config, new shuffled deck and
+ * clock — a fully separate match for the history) and publish its code on the
+ * old room exactly once. Idempotent under double-fire; the second presser is
+ * normally the creator, and the unlikely both-create race is settled by the
+ * status-guarded code publication (the loser deletes its orphan room).
+ */
+export async function requestRematchCore(
+  room: MatchRoom,
+  userId: string,
+): Promise<RematchState | null> {
+  const role = roleOf(room, userId);
+  if (!role || room.status !== "FINISHED" || !room.guestId) return null;
+
+  const view = (r: MatchRoom): RematchState => ({
+    myRematch: (role === "host" ? r.hostRematchAt : r.guestRematchAt) != null,
+    rivalRematch: (role === "host" ? r.guestRematchAt : r.hostRematchAt) != null,
+    rematchCode: r.rematchCode,
+    serverNow: Date.now(),
+  });
+
+  if (room.rematchCode) return view(room);
+
+  const now = new Date();
+  const flagField = role === "host" ? "hostRematchAt" : "guestRematchAt";
+  await prisma.matchRoom.updateMany({
+    where: { id: room.id, status: "FINISHED", [flagField]: null },
+    data: { [flagField]: now, updatedAt: now },
+  });
+
+  let fresh = await prisma.matchRoom.findUnique({ where: { id: room.id } });
+  if (!fresh) return null;
+
+  if (fresh.hostRematchAt && fresh.guestRematchAt && !fresh.rematchCode) {
+    // Both agreed and nobody published yet — I create the rematch room. The
+    // backdated readyAt makes any lobby visit redirect straight to the game
+    // room, where the READY→IN_GAME promotion stamps a fresh startedAt and
+    // shuffles a fresh deck (the synchronized 3-2-1 runs from there).
+    const newCode = generateRoomCode();
+    const created = await prisma.matchRoom.create({
+      data: {
+        code: newCode,
+        status: "READY",
+        hostId: fresh.hostId,
+        guestId: fresh.guestId,
+        gameId: fresh.gameId,
+        difficulty: fresh.difficulty,
+        durationS: fresh.durationS,
+        readyAt: new Date(Date.now() - TIMELINE_TOTAL_MS),
+      },
+    });
+    const published = await prisma.matchRoom.updateMany({
+      where: { id: room.id, rematchCode: null },
+      data: { rematchCode: newCode, updatedAt: new Date() },
+    });
+    if (published.count === 0) {
+      // Lost the (unlikely) creation race — discard my orphan room.
+      await prisma.matchRoom.delete({ where: { id: created.id } }).catch(() => {});
+    }
+    fresh = await prisma.matchRoom.findUnique({ where: { id: room.id } });
+    if (!fresh) return null;
+  }
+
+  await notifyRooms([room.id]);
+  return view(fresh);
 }
 
 /** Timer-driven finish: valid once the clock ran out (small tolerance for

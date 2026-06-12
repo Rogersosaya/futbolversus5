@@ -22,6 +22,13 @@ export const DIFFICULTY_TOP: Record<string, number> = {
 };
 export const DEFAULT_TOP = 30;
 
+/** Player-facing names of the stored difficulty values. */
+export const DIFFICULTY_LABELS: Record<string, string> = {
+  "Fácil": "Canterano",
+  "Medio": "Titular",
+  "Difícil": "Leyenda",
+};
+
 /** Accepted players.sub_position values per board cell label. */
 export const POS_SUBPOSITIONS: Record<string, string[]> = {
   POR: ["Goalkeeper"],

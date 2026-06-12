@@ -11,6 +11,7 @@ import {
   leaveActiveRooms,
   type ActionResult,
 } from "@/actions/matchroom";
+import { generateRoomCode } from "@/lib/room-code";
 import { toCards, getMatchCard, type PlayerCard, type SelfMatchCard } from "@/actions/friends";
 import { DEFAULT_DURATION_S, DURATION_OPTIONS } from "@/data/match-game";
 
@@ -23,18 +24,6 @@ export interface MatchInviteToast {
   /** The OTHER player (sender for incoming, receiver for outgoing). */
   player: PlayerCard;
   gameName: string | null;
-}
-
-// Unambiguous alphabet (no I/O/0/1) for short shareable room codes.
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const CODE_LENGTH = 6;
-
-function generateRoomCode(): string {
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
-  }
-  return code;
 }
 
 async function requireUser(): Promise<string | null> {

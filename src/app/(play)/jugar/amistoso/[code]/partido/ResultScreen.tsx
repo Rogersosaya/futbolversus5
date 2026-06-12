@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import { CollectibleGlyph } from "@/components/CollectibleArt";
 import { ShieldArt } from "@/components/game-art";
+import { Sym } from "@/components/svg";
 import type { SelfMatchCard } from "@/actions/friends";
 
 const COPY = {
@@ -10,6 +13,62 @@ const COPY = {
   draw: { tag: "PARTIDO FINALIZADO", title: "EMPATE", mood: "draw" },
 } as const;
 
+/** The one rematch button cycles through the handshake states. */
+function RematchButton({
+  myRematch,
+  rivalRematch,
+  rematchAgreed,
+  rivalName,
+  onRematch,
+}: {
+  myRematch: boolean;
+  rivalRematch: boolean;
+  rematchAgreed: boolean;
+  rivalName: string;
+  onRematch: () => Promise<void>;
+}) {
+  const [sending, setSending] = useState(false);
+
+  if (rematchAgreed || (myRematch && rivalRematch)) {
+    return (
+      <button className="mr-rematch waiting" disabled>
+        <Sym id="ic-refresh" />
+        ¡REVANCHA! ENTRANDO…
+      </button>
+    );
+  }
+  if (myRematch) {
+    return (
+      <button className="mr-rematch waiting" disabled>
+        <Sym id="ic-refresh" />
+        ESPERANDO AL RIVAL…
+      </button>
+    );
+  }
+  const ask = async () => {
+    setSending(true);
+    try {
+      await onRematch();
+    } finally {
+      setSending(false);
+    }
+  };
+  if (rivalRematch) {
+    return (
+      <button className="mr-rematch incoming" disabled={sending} onClick={ask}>
+        <Sym id="ic-refresh" />
+        ¡{rivalName.toUpperCase()} QUIERE REVANCHA! — ACEPTAR
+      </button>
+    );
+  }
+  return (
+    <button className="mr-rematch" disabled={sending} onClick={ask}>
+      <Sym id="ic-refresh" />
+      REVANCHA
+    </button>
+  );
+}
+
 /** Full-screen result overlay once the room is FINISHED. */
 export function ResultScreen({
   result,
@@ -17,6 +76,10 @@ export function ResultScreen({
   rivalScore,
   me,
   rival,
+  myRematch,
+  rivalRematch,
+  rematchAgreed,
+  onRematch,
   onExit,
 }: {
   result: "win" | "lose" | "draw";
@@ -24,6 +87,10 @@ export function ResultScreen({
   rivalScore: number;
   me: SelfMatchCard;
   rival: SelfMatchCard;
+  myRematch: boolean;
+  rivalRematch: boolean;
+  rematchAgreed: boolean;
+  onRematch: () => Promise<void>;
   onExit: () => void;
 }) {
   const c = COPY[result];
@@ -48,9 +115,18 @@ export function ResultScreen({
           <span className="mr-club">{rival.club}</span>
         </div>
       </div>
-      <button className="mr-btn" onClick={onExit}>
-        VOLVER A AMISTOSOS
-      </button>
+      <div className="mr-actions">
+        <RematchButton
+          myRematch={myRematch}
+          rivalRematch={rivalRematch}
+          rematchAgreed={rematchAgreed}
+          rivalName={rival.president}
+          onRematch={onRematch}
+        />
+        <button className="mr-btn" onClick={onExit}>
+          VOLVER A AMISTOSOS
+        </button>
+      </div>
     </div>
   );
 }

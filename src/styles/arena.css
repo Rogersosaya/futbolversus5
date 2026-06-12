@@ -182,9 +182,22 @@ button.tok{background:transparent;border:0;padding:0;font:inherit;cursor:default
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mr-num{font-family:var(--font-u);font-weight:700;font-size:44px;color:#fff;font-variant-numeric:tabular-nums}
 .mr-dash{font-size:30px;color:var(--txt-3)}
+.mr-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center}
 .mr-btn{height:52px;padding:0 34px;border-radius:30px;border:1px solid rgba(232,207,142,.55);cursor:pointer;
   background:rgba(232,207,142,.12);color:var(--gold);font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.14em;transition:all .18s}
 .mr-btn:hover{background:rgba(232,207,142,.22)}
+/* rematch handshake: ask → waiting → incoming (rival asked first) */
+.mr-rematch{display:flex;align-items:center;gap:10px;height:52px;padding:0 34px;border-radius:30px;cursor:pointer;
+  border:1px solid rgba(238,241,247,.5);background:rgba(238,241,247,.1);color:#eef1f7;
+  font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.14em;transition:all .18s}
+.mr-rematch svg{width:17px;height:17px}
+.mr-rematch:hover:not(:disabled){background:rgba(238,241,247,.2)}
+.mr-rematch.waiting{cursor:default;color:var(--txt-2);border-color:var(--line-strong);background:rgba(255,255,255,.04)}
+.mr-rematch.waiting svg{animation:mrSpin 1.2s linear infinite}
+@keyframes mrSpin{to{transform:rotate(360deg)}}
+.mr-rematch.incoming{border-color:rgba(232,207,142,.7);background:rgba(232,207,142,.16);color:var(--gold);
+  animation:efPulse 1.6s ease-in-out infinite}
+.mr-rematch.incoming:hover:not(:disabled){background:rgba(232,207,142,.26)}
 
 /* ===== reduced motion ===== */
 @media (prefers-reduced-motion: reduce){
@@ -194,6 +207,7 @@ button.tok{background:transparent;border:0;padding:0;font:inherit;cursor:default
   .gc-input.err{animation:none}
   .gtoast{animation:none}
   .early-finish{animation:none}
+  .mr-rematch.waiting svg,.mr-rematch.incoming{animation:none}
   .gs-time.low{animation:none}
   .tok.empty.free:hover .disc{transform:none}
   .se-rush,.se-rush.r2,.se-mouth,.se-beam,.se-flash{display:none}
