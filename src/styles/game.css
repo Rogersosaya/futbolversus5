@@ -39,7 +39,7 @@
 .gs-num b{font-family:var(--font-u);font-weight:700;font-size:50px;line-height:1;font-variant-numeric:tabular-nums;
   color:#fff;text-shadow:0 0 24px var(--own-glow,transparent)}
 .gs-num::after{content:"";position:absolute;left:16px;right:16px;bottom:11px;height:3px;border-radius:3px;
-  background:var(--own,transparent);box-shadow:0 0 10px var(--own-glow,transparent)}
+  background:var(--ring,var(--own,transparent));box-shadow:0 0 10px var(--own-glow,transparent)}
 /* center clock track, framed by hairline dividers and anchored a touch darker */
 .gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:rgba(0,0,0,.34);
   border-inline:1px solid rgba(255,255,255,.1)}
@@ -111,7 +111,7 @@
 .tok.sel .nm{font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.08em;color:var(--gold)}
 /* filled */
 .tok.fill .disc{overflow:visible}
-.tok.fill .photo{width:100%;height:100%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);position:relative}
+.tok.fill .photo{width:100%;height:100%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);position:relative;z-index:1}
 .tok.fill .photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
 .tok.fill .photo .sil{position:absolute;inset:0;color:#3c4658;padding:9px 9px 0}
 .tok.fill .photo .sil svg{width:100%;height:100%}
@@ -119,9 +119,12 @@
   box-shadow:0 0 0 1.5px #0b0e14,0 2px 5px rgba(0,0,0,.5)}
 .tok.fill .fl svg{display:block;width:100%;height:100%}
 .tok.fill .nm{font-family:var(--font-u);font-weight:600;font-size:13.5px;color:#fff;text-align:center;text-shadow:0 2px 5px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9);white-space:nowrap;width:134px;overflow:hidden;text-overflow:ellipsis}
-/* owner colors set via inline --own; ring + glow + base bar */
-.tok.fill .disc{box-shadow:0 0 0 3px var(--own),0 0 20px -2px var(--own-glow),0 8px 16px rgba(0,0,0,.5)}
-.tok.fill .disc::after{content:"";position:absolute;left:50%;bottom:-13px;width:34px;height:5px;border-radius:4px;background:var(--own);transform:translateX(-50%);box-shadow:0 0 10px var(--own-glow)}
+/* owner colors set via inline --own (accent) + --ring (club identity, gradient
+   when the club has two colors). The ring is a real element so it can carry a
+   gradient; box-shadow only draws the glow + drop. */
+.tok.fill .disc{box-shadow:0 0 20px -2px var(--own-glow),0 8px 16px rgba(0,0,0,.5)}
+.tok.fill .disc::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:var(--ring,var(--own));z-index:0}
+.tok.fill .disc::after{content:"";position:absolute;left:50%;bottom:-13px;width:34px;height:5px;border-radius:4px;background:var(--ring,var(--own));transform:translateX(-50%);box-shadow:0 0 10px var(--own-glow);z-index:2}
 .tok.fill.mine .nm{color:#fff}
 .tok.just .disc{animation:tokPop .45s cubic-bezier(.2,1.5,.4,1)}
 @keyframes tokPop{0%{transform:scale(.2);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}

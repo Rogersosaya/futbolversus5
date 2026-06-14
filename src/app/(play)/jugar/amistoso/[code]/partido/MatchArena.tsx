@@ -38,13 +38,72 @@ import { COUNTDOWN_MS, PENALTY_MS, isLeadUnreachable } from "@/data/match-game";
 import { CountdownIntro } from "./CountdownIntro";
 import { ResultScreen } from "./ResultScreen";
 
-/** Fixed side colors: the local player is always the light side, the rival
- * the red side — mirrors the GameOverlay convention. */
-const ME_SIDE = { own: "#eef1f7", glow: "rgba(238,241,247,.75)" };
-const RIVAL_SIDE = { own: "#e8344f", glow: "rgba(232,52,79,.75)" };
+/** Each side is themed by its club's own colors. These fallbacks only apply
+ * when a club has no colors set: local = light, rival = red (the old scheme). */
+const ME_FALLBACK = "#eef1f7";
+const RIVAL_FALLBACK = "#e8344f";
 
-const sideStyle = (s: { own: string; glow: string }): CSSProperties =>
-  ({ "--own": s.own, "--own-glow": s.glow } as CSSProperties);
+type SideTheme = {
+  /** A single legible accent (score underline, glows, owner dot halo). */
+  own: string;
+  /** Translucent halo derived from `own`. */
+  glow: string;
+  /** The club identity for bars/rings: solid color, or a 2-stop gradient when
+   * the club has two colors. */
+  ring: string;
+};
+
+const hexToRgb = (hex: string) => {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.slice(0, 6);
+  const int = parseInt(full, 16);
+  return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
+};
+
+/** WCAG relative luminance (0 = black, 1 = white). */
+const luminance = (hex: string) => {
+  const { r, g, b } = hexToRgb(hex);
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+};
+
+const toHex = (v: number) => v.toString(16).padStart(2, "0");
+
+/** Lighten toward white by `t` (0–1) — rescues near-black accents that would
+ * otherwise vanish against the dark arena. */
+const mixWhite = (hex: string, t: number) => {
+  const { r, g, b } = hexToRgb(hex);
+  const m = (v: number) => Math.round(v + (255 - v) * t);
+  return `#${toHex(m(r))}${toHex(m(g))}${toHex(m(b))}`;
+};
+
+const rgba = (hex: string, a: number) => {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+};
+
+const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
+
+/** Build a side theme from a club's 1–2 colors. The ring preserves the raw club
+ * colors (a gradient when there are two); the single `own` accent is the most
+ * visible color, lightened if it'd disappear on the near-black arena. */
+function clubTheme(colors: string[] | undefined, fallback: string): SideTheme {
+  const cs = (colors ?? []).filter((c) => HEX_RE.test(c));
+  if (cs.length === 0) {
+    return { own: fallback, glow: rgba(fallback, 0.72), ring: fallback };
+  }
+  const brightest = cs.reduce((a, b) => (luminance(b) > luminance(a) ? b : a));
+  const own = luminance(brightest) < 0.16 ? mixWhite(brightest, 0.55) : brightest;
+  const ring =
+    cs.length >= 2 ? `linear-gradient(135deg, ${cs[0]}, ${cs[1]})` : cs[0];
+  return { own, glow: rgba(own, 0.72), ring };
+}
+
+const sideStyle = (t: SideTheme): CSSProperties =>
+  ({ "--own": t.own, "--own-glow": t.glow, "--ring": t.ring } as CSSProperties);
 
 const CLAIM_ERROR_COPY: Record<ClaimErrorCode, string> = {
   WRONG_POSITION: "No juega en esa posición",
@@ -66,11 +125,11 @@ const Silhouette = () => (
 
 function ScoreTeam({
   player,
-  side,
+  theme,
   away,
 }: {
   player: SelfMatchCard;
-  side: { own: string; glow: string };
+  theme: SideTheme;
   away?: boolean;
 }) {
   // NOTE: never use bare `home`/`away` classes here — the menu shell's
@@ -86,7 +145,7 @@ function ScoreTeam({
       </div>
       <span
         className="gs-bar"
-        style={{ background: side.own, boxShadow: `0 0 10px ${side.glow}` }}
+        style={{ background: theme.ring, boxShadow: `0 0 10px ${theme.glow}` }}
       />
     </div>
   );
@@ -112,6 +171,14 @@ export function MatchArena({
 }) {
   const router = useRouter();
   const { room, me, rival } = initial;
+
+  // Each seat is themed by its club's colors (gradient when it has two);
+  // falls back to the classic light/red scheme for clubless players.
+  const meTheme = useMemo(() => clubTheme(me.clubColors, ME_FALLBACK), [me.clubColors]);
+  const rivalTheme = useMemo(
+    () => clubTheme(rival.clubColors, RIVAL_FALLBACK),
+    [rival.clubColors],
+  );
 
   const [game, setGame] = useState<MatchGameState>(initialGame);
   const [skew, setSkew] = useState(() => initialGame.serverNow - Date.now());
@@ -371,8 +438,8 @@ export function MatchArena({
         {/* Broadcast-style scoreboard: club blocks at the edges, side-colored
             goal digits, and the (seconds) clock owning the center. */}
         <div className="gscore">
-          <ScoreTeam player={me} side={ME_SIDE} />
-          <div className="gs-num" style={sideStyle(ME_SIDE)}>
+          <ScoreTeam player={me} theme={meTheme} />
+          <div className="gs-num" style={sideStyle(meTheme)}>
             <b>{game.myScore}</b>
           </div>
           <div className="gs-mid">
@@ -386,10 +453,10 @@ export function MatchArena({
               {clockLabel}
             </span>
           </div>
-          <div className="gs-num" style={sideStyle(RIVAL_SIDE)}>
+          <div className="gs-num" style={sideStyle(rivalTheme)}>
             <b>{game.rivalScore}</b>
           </div>
-          <ScoreTeam player={rival} side={RIVAL_SIDE} away />
+          <ScoreTeam player={rival} theme={rivalTheme} away />
         </div>
 
         {(phase === "playing" || phase === "countdown") && (
@@ -477,13 +544,13 @@ export function MatchArena({
             <span className="pln pbox s r" />
             <span className="pln pgoal l" />
             <span className="pln pgoal r" />
-            <div className="gp-owner me" style={sideStyle(ME_SIDE)}>
-              <i style={{ background: ME_SIDE.own }} />
+            <div className="gp-owner me" style={sideStyle(meTheme)}>
+              <i style={{ background: meTheme.ring }} />
               <span>TÚ</span>
               <small>{me.club}</small>
             </div>
-            <div className="gp-owner op" style={sideStyle(RIVAL_SIDE)}>
-              <i style={{ background: RIVAL_SIDE.own }} />
+            <div className="gp-owner op" style={sideStyle(rivalTheme)}>
+              <i style={{ background: rivalTheme.ring }} />
               <span>RIVAL</span>
               <small>{rival.club}</small>
             </div>
@@ -491,7 +558,7 @@ export function MatchArena({
               const claim = claimsByCell.get(cell.id);
               const pos: CSSProperties = { left: `${cell.x}%`, top: `${cell.y}%` };
               if (claim) {
-                const side = claim.mine ? ME_SIDE : RIVAL_SIDE;
+                const side = claim.mine ? meTheme : rivalTheme;
                 return (
                   <div
                     key={cell.id}

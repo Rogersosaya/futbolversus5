@@ -25,6 +25,8 @@ export interface Collectible {
   imageUrl: string | null;
   gradientFrom: string | null;
   gradientTo: string | null;
+  /** 1–2 representative club colors as hex strings (primary first). CREST only. */
+  colors: string[];
   rarity: Rarity;
   price: number;
   isStarter: boolean;
@@ -74,6 +76,7 @@ type CollectibleModel = {
   imageUrl: string | null;
   gradientFrom: string | null;
   gradientTo: string | null;
+  colors: string[];
   rarity: Rarity;
   price: number;
   isStarter: boolean;
@@ -91,6 +94,7 @@ function mapCollectible(c: CollectibleModel): Collectible {
     imageUrl: c.imageUrl,
     gradientFrom: c.gradientFrom,
     gradientTo: c.gradientTo,
+    colors: c.colors ?? [],
     rarity: c.rarity,
     price: c.price,
     isStarter: c.isStarter,

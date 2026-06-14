@@ -127,6 +127,8 @@ model Collectible {
   /// Optional 2-stop gradient for generated tiles (stadiums without a photo).
   gradientFrom String?        @map("gradient_from")
   gradientTo   String?        @map("gradient_to")
+  /// 1–2 representative club colors as hex strings (primary first). CREST only.
+  colors      String[]        @default([])
   rarity      Rarity          @default(COMMON)
   /// Price in coins. 0 = free starter pick.
   price       Int             @default(0)

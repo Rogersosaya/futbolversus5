@@ -16,6 +16,9 @@ export interface PlayerCard {
   country: string;
   countryName: string;
   art: CollectibleArtData | null;
+  /** The club crest's 1–2 representative colors (hex, primary first). Empty
+   * when the player has no crest. Used to theme the scoreboard and tokens. */
+  clubColors: string[];
   level: number;
   power: number;
   /** Win percentage (0–100), derived from wins/played. */
@@ -54,6 +57,7 @@ export async function toCards(profiles: Profile[]): Promise<PlayerCard[]> {
             gradientTo: crest.gradientTo,
           }
         : null,
+      clubColors: crest?.colors ?? [],
       level: p.level,
       power: p.power,
       winPct: winPctOf(p.wins, p.played),

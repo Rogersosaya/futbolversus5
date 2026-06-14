@@ -114,6 +114,7 @@ export async function searchPlayers(query: string): Promise<PlayerCard[]> {
             gradientTo: crest.gradientTo,
           }
         : null,
+      clubColors: crest?.colors ?? [],
       level: p.level,
       power: p.power,
       winPct: p.played > 0 ? Math.round((p.wins / p.played) * 100) : 0,
