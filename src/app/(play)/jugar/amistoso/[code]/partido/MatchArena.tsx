@@ -767,6 +767,20 @@ function PlayerSearch({
     }
   };
 
+  // Clicking back into the input reopens a dropdown that an outside click had
+  // closed: the query is still there, so re-run the search now to bring the
+  // suggestions back (no-op when it's already open or the query is too short).
+  const reopenDropdown = () => {
+    if (!active || submitting || hits.length > 0 || query.trim().length < 3) return;
+    const seq = ++seqRef.current;
+    searchPlayers(query).then((found) => {
+      if (seqRef.current === seq) {
+        setHits(found);
+        setHighlight(0);
+      }
+    });
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -801,6 +815,7 @@ function PlayerSearch({
           }
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={onKeyDown}
+          onClick={reopenDropdown}
         />
       </div>
       {active && hits.length > 0 && (
