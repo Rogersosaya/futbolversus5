@@ -496,7 +496,7 @@ export function MatchArena({
             )}
 
             {/* No `key` remount on cell change: re-targeting a cell keeps the
-                typed query (the dropdown closes itself, see PlayerSearch). */}
+                typed query (the dropdown closes on outside click, see PlayerSearch). */}
             <PlayerSearch
               code={room.code}
               cellId={selectedCell}
@@ -672,6 +672,7 @@ function PlayerSearch({
   const [error, setError] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const seqRef = useRef(0);
 
   const active = cellId != null && !disabled;
@@ -683,14 +684,22 @@ function PlayerSearch({
     if (active) inputRef.current?.focus();
   }, [active, cellId]);
 
-  // Re-targeting another cell keeps the typed query but closes the stale
-  // dropdown: its suggestions were for the previous cell, so drop them (and
-  // invalidate any in-flight search) until the player edits the query again.
+  // Close the dropdown on any click outside the input + suggestions (e.g.
+  // re-targeting another cell, or clicking anywhere else on the pitch). The
+  // typed query stays; only the stale suggestions go (with any in-flight
+  // search invalidated) until the player edits the query again.
   useEffect(() => {
-    seqRef.current++;
-    setHits([]);
-    setHighlight(0);
-  }, [cellId]);
+    if (hits.length === 0) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) {
+        seqRef.current++;
+        setHits([]);
+        setHighlight(0);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [hits.length]);
 
   // Spell out the cause with the actual pick so the player learns the rule.
   const rejectMessage = (code: ClaimErrorCode, player: PlayerHit): string => {
@@ -775,7 +784,7 @@ function PlayerSearch({
   };
 
   return (
-    <div className="psearch">
+    <div className="psearch" ref={rootRef}>
       <div className={`gc-input${active ? "" : " off"}${error ? " err" : ""}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="11" cy="11" r="7" />
