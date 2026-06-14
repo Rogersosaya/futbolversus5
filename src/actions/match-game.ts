@@ -17,7 +17,7 @@ import {
   DEFAULT_TOP,
   DIFFICULTY_TOP,
   PENALTY_MS,
-  POS_SUBPOSITIONS,
+  POS_MAIN_POSITIONS,
   isLeadUnreachable,
 } from "@/data/match-game";
 import type { MatchRoom, Prisma } from "@/generated/prisma/client";
@@ -149,7 +149,7 @@ export async function searchPlayersCore(q: string): Promise<PlayerHit[]> {
     SELECT "player_id" AS id, "name", "image_url" AS "imageUrl"
     FROM "players"
     WHERE public.f_unaccent("name") ILIKE '%' || public.f_unaccent(${escaped}) || '%'
-      AND "sub_position" IS NOT NULL AND "sub_position" <> 'Missing'
+      AND "main_position" IS NOT NULL AND "main_position" <> 'Missing'
     ORDER BY "highest_market_value_in_eur" DESC NULLS LAST, "name" ASC
     LIMIT 8`;
 }
@@ -337,7 +337,7 @@ export async function claimCellCore(
 
   const cell = CELL_BY_ID.get(cellId);
   if (!cell) return fail("WRONG_POSITION");
-  const allowed = POS_SUBPOSITIONS[cell.pos] ?? [];
+  const allowed = POS_MAIN_POSITIONS[cell.pos] ?? [];
 
   room = await ensureNationCycle(room);
   if (room.nationCycle.length === 0) return fail("RETRY");
@@ -348,14 +348,25 @@ export async function claimCellCore(
   const [player, nation] = await Promise.all([
     prisma.futPlayer.findUnique({
       where: { playerId },
-      select: { subPosition: true, countryOfCitizenship: true, name: true, imageUrl: true },
+      select: {
+        mainPosition: true,
+        firstSidePosition: true,
+        countryOfCitizenship: true,
+        name: true,
+        imageUrl: true,
+      },
     }),
     prisma.nationalTeam.findUnique({
       where: { nationalTeamId: nationId },
       select: { countryName: true },
     }),
   ]);
-  if (!player?.subPosition || !allowed.includes(player.subPosition)) {
+  if (!player) return fail("WRONG_POSITION");
+  // A player fits the cell by their main position OR their first side position.
+  const positions = [player.mainPosition, player.firstSidePosition].filter(
+    (p): p is string => p != null,
+  );
+  if (!positions.some((p) => allowed.includes(p))) {
     return fail("WRONG_POSITION");
   }
   if (!nation?.countryName || player.countryOfCitizenship !== nation.countryName) {

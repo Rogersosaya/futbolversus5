@@ -2,7 +2,7 @@
 // (auth comes from Supabase cookies upstream). The card shape mirrors the
 // transfer ranking pattern: a profile resolved to club name + crest art.
 import { prisma } from "@/lib/prisma";
-import { getCollectiblesByIds } from "@/actions/catalog";
+import { getCollectiblesByIds, type Collectible } from "@/actions/catalog";
 import { countryByCode } from "@/data/game-assets";
 import type { CollectibleArtData } from "@/components/CollectibleArt";
 import type { Profile } from "@/generated/prisma/client";
@@ -145,35 +145,46 @@ export async function getSelfCard(userId: string): Promise<PlayerCard | null> {
   return card ?? null;
 }
 
-/** A lobby-side card: full player card + resolved avatar art. */
+/** A lobby-side card: full player card + the cosmetics that represent the
+ * player — their president avatar and their home stadium (card backdrop). */
 export interface SelfMatchCard extends PlayerCard {
   avatarArt: CollectibleArtData | null;
+  stadiumArt: CollectibleArtData | null;
 }
 
-/** A player's full lobby card (card + avatar art). Used for both seats of a
- * match room ("TÚ" and "RIVAL"). */
+/** Map a resolved collectible to the serializable art shape (null when unset). */
+const toArt = (
+  c:
+    | Pick<Collectible, "kind" | "artKey" | "imageUrl" | "gradientFrom" | "gradientTo">
+    | undefined,
+): CollectibleArtData | null =>
+  c
+    ? {
+        kind: c.kind,
+        artKey: c.artKey,
+        imageUrl: c.imageUrl,
+        gradientFrom: c.gradientFrom,
+        gradientTo: c.gradientTo,
+      }
+    : null;
+
+/** A player's full lobby card (card + avatar + stadium art). Used for both
+ * seats of a match room ("TÚ" and "RIVAL"). One round-trip resolves the crest
+ * (via toCards), avatar and stadium collectibles together. */
 export async function getMatchCard(userId: string): Promise<SelfMatchCard | null> {
   const profile = await prisma.profile.findUnique({ where: { id: userId } });
   if (!profile) return null;
 
-  const [[card], avatarColls] = await Promise.all([
+  const [[card], colls] = await Promise.all([
     toCards([profile]),
-    getCollectiblesByIds([profile.avatarId]),
+    getCollectiblesByIds([profile.avatarId, profile.stadiumId]),
   ]);
   if (!card) return null;
 
-  const avatar = profile.avatarId
-    ? avatarColls.find((c) => c.id === profile.avatarId)
-    : undefined;
-  const avatarArt: CollectibleArtData | null = avatar
-    ? {
-        kind: avatar.kind,
-        artKey: avatar.artKey,
-        imageUrl: avatar.imageUrl,
-        gradientFrom: avatar.gradientFrom,
-        gradientTo: avatar.gradientTo,
-      }
-    : null;
-
-  return { ...card, avatarArt };
+  const find = (id: string | null) => (id ? colls.find((c) => c.id === id) : undefined);
+  return {
+    ...card,
+    avatarArt: toArt(find(profile.avatarId)),
+    stadiumArt: toArt(find(profile.stadiumId)),
+  };
 }

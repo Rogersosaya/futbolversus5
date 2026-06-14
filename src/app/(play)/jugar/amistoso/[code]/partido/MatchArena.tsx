@@ -33,7 +33,12 @@ import type {
 } from "@/actions/match-game";
 import type { SelfMatchCard } from "@/actions/friends";
 import { BOARD_CELLS } from "@/data/gameboard";
-import { COUNTDOWN_MS, PENALTY_MS, isLeadUnreachable } from "@/data/match-game";
+import {
+  COUNTDOWN_MS,
+  PENALTY_MS,
+  POS_FULL_LABELS,
+  isLeadUnreachable,
+} from "@/data/match-game";
 
 import { CountdownIntro } from "./CountdownIntro";
 import { ResultScreen } from "./ResultScreen";
@@ -395,8 +400,11 @@ export function MatchArena({
     ? Math.max(0, (game.myPenaltyUntil ?? 0) - nowS)
     : 0;
 
-  const selectedPos = selectedCell
+  const selectedCellPos = selectedCell
     ? BOARD_CELLS.find((c) => c.id === selectedCell)?.pos ?? null
+    : null;
+  const selectedPos = selectedCellPos
+    ? POS_FULL_LABELS[selectedCellPos] ?? selectedCellPos
     : null;
 
   return (
@@ -590,7 +598,7 @@ export function MatchArena({
                   onClick={() => onCellClick(cell.id)}
                 >
                   <div className="disc">
-                    <span className="pos">{cell.pos}</span>
+                    <span className="pos">{POS_FULL_LABELS[cell.pos] ?? cell.pos}</span>
                   </div>
                   {sel && <span className="nm">TU CASILLA</span>}
                 </button>

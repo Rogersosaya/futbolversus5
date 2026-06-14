@@ -435,6 +435,8 @@ model FutPlayer {
   firstName               String?   @map("first_name")
   lastName                String?   @map("last_name")
   name                    String
+  /// nombre corto, ej. "K. Mbappé"
+  playerShortName         String?   @map("player_short_name")
   lastSeason              Int?      @map("last_season")
   /// Sin FK en la BD: ~2,269 juegan en clubes menores fuera de `clubs`
   /// (currentClub queda null para ellos; el nombre está en currentClubName).
@@ -444,10 +446,17 @@ model FutPlayer {
   cityOfBirth             String?   @map("city_of_birth")
   countryOfCitizenship    String?   @map("country_of_citizenship")
   dateOfBirth             DateTime? @map("date_of_birth") @db.Date
-  subPosition             String?   @map("sub_position")
+  /// posición principal (nombre completo), ej. "Centre-Forward"
+  mainPosition            String?   @map("main_position")
   position                String?
+  /// lado/posición principal (nombre completo), ej. "Left Winger"
+  firstSidePosition       String?   @map("first_side_position")
+  /// segundo lado/posición (nombre completo), ej. "Attacking Midfield"
+  secondSidePosition      String?   @map("second_side_position")
   foot                    String?
   heightInCm              Decimal?  @map("height_in_cm")
+  /// número de dorsal actual
+  jersey                  Int?
   contractExpirationDate  DateTime? @map("contract_expiration_date") @db.Date
   agentName               String?   @map("agent_name")
   /// foto oficial Transfermarkt
@@ -458,7 +467,11 @@ model FutPlayer {
   url                     String?
   currentClubDomesticCompetitionId String? @map("current_club_domestic_competition_id")
   currentClubName         String?   @map("current_club_name")
+  /// fecha de debut en el club actual
+  clubDebut               DateTime? @map("club_debut") @db.Date
   marketValueInEur        Decimal?  @map("market_value_in_eur")
+  /// fecha en que Transfermarkt fijó el valor de mercado actual
+  marketValueDetermined   DateTime? @map("market_value_determined") @db.Date
   highestMarketValueInEur Decimal?  @map("highest_market_value_in_eur")
 
   nationalTeam  NationalTeam?        @relation(fields: [currentNationalTeamId], references: [nationalTeamId])
@@ -473,7 +486,7 @@ model FutPlayer {
 
   @@index([name])
   @@index([countryOfCitizenship])
-  @@index([position, subPosition])
+  @@index([position, mainPosition])
   @@map("players")
 }
 

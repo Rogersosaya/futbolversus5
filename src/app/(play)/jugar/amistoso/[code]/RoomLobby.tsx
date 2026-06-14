@@ -11,8 +11,8 @@ import { useRouter } from "next/navigation";
 
 import { FlagSvg, Icon } from "@/components/svg";
 import { CollectibleGlyph } from "@/components/CollectibleArt";
-import { AvatarArt, ShieldArt } from "@/components/game-art";
-import { Stars, StatRow } from "@/components/lobby/parts";
+import { AvatarArt, ShieldArt, StadiumArt } from "@/components/game-art";
+import { clubCardVars } from "@/lib/club-color";
 import { useOnline } from "@/components/realtime/presence";
 import { createClient } from "@/lib/supabase-browser";
 import { roomTopicFor, SYNC_EVENT } from "@/lib/realtime-topics";
@@ -47,40 +47,58 @@ const CopyIcon = () => (
   </svg>
 );
 
+/**
+ * One seat of the lobby, built from the player's own collectibles: their home
+ * stadium is the card backdrop, and the president (avatar + name) and club
+ * (crest + name) stand side by side as two equally weighted figures, both
+ * glowing in the club's colors. No stats — a friendly carries no ranking, so
+ * the card is pure identity.
+ */
 function PlayerTeamCard({ player, incoming }: { player: SelfMatchCard; incoming?: boolean }) {
-  const stats = [
-    { label: "NIVEL", value: String(player.level) },
-    { label: "PODER", value: String(player.power) },
-    { label: "VICT.", value: `${player.winPct}%` },
-  ];
   return (
-    <div className={`team lb-team${incoming ? " in" : ""}`}>
-      <div className="country-bar">
-        <span className="cn">{player.countryName || "—"}</span>
-        {player.country && (
-          <span className="flag">
-            <FlagSvg code={player.country} />
-          </span>
-        )}
+    <div className={`pcard${incoming ? " in" : ""}`} style={clubCardVars(player.clubColors)}>
+      <div className="pc-stadium" aria-hidden="true">
+        {player.stadiumArt ? <CollectibleGlyph c={player.stadiumArt} /> : <StadiumArt id={null} />}
       </div>
-      <div className="team-card">
-        <div className="pres-chip">
-          <span className="pc-av">
-            {player.avatarArt ? <CollectibleGlyph c={player.avatarArt} /> : <AvatarArt id={null} />}
-          </span>
-          <span className="pc-tx">
-            <small>PRESIDENTE</small>
-            <b>{player.president}</b>
-          </span>
+      <div className="pc-veil" aria-hidden="true" />
+
+      <div className="pc-body">
+        <div className="pc-nation">
+          {player.country && (
+            <span className="pc-flag">
+              <FlagSvg code={player.country} />
+            </span>
+          )}
+          <span className="pc-country">{player.countryName || "Sin nación"}</span>
         </div>
-        <div className="team-name">{player.club}</div>
-        <div className="crest-row">
-          <span className="crest">
-            {player.art ? <CollectibleGlyph c={player.art} /> : <ShieldArt id={null} />}
-          </span>
+
+        <div className="pc-hero">
+          <div className="pc-fig">
+            <span className="pc-figart">
+              <span className="pc-avatar">
+                {player.avatarArt ? <CollectibleGlyph c={player.avatarArt} /> : <AvatarArt id={null} />}
+              </span>
+            </span>
+            <span className="pc-cap">
+              <small>PRESIDENTE</small>
+              <b>{player.president}</b>
+            </span>
+          </div>
+
+          <div className="pc-fig">
+            <span className="pc-figart">
+              <span className="pc-crest">
+                {player.art ? <CollectibleGlyph c={player.art} /> : <ShieldArt id={null} />}
+              </span>
+            </span>
+            <span className="pc-cap">
+              <small>CLUB</small>
+              <b>{player.club}</b>
+            </span>
+          </div>
         </div>
-        <Stars rating={player.power} />
-        <StatRow stats={stats} />
+
+        <span className="pc-rule" />
       </div>
     </div>
   );
@@ -461,9 +479,6 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
             SALA <b>{room.code}</b>
           </span>
         </div>
-
-        <div className="side-label local">TÚ</div>
-        <div className="side-label away">RIVAL</div>
 
         <div className="lobby-cols">
           <div className="lb-col">

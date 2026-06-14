@@ -29,8 +29,8 @@ export const DIFFICULTY_LABELS: Record<string, string> = {
   "Difícil": "Leyenda",
 };
 
-/** Accepted players.sub_position values per board cell label. */
-export const POS_SUBPOSITIONS: Record<string, string[]> = {
+/** Accepted players.main_position values per board cell label. */
+export const POS_MAIN_POSITIONS: Record<string, string[]> = {
   POR: ["Goalkeeper"],
   LD: ["Right-Back"],
   DFC: ["Centre-Back"],
@@ -40,6 +40,20 @@ export const POS_SUBPOSITIONS: Record<string, string[]> = {
   ED: ["Right Winger", "Right Midfield"],
   EI: ["Left Winger", "Left Midfield"],
   DC: ["Centre-Forward", "Second Striker"],
+};
+
+/** Full position name shown on the board / search for each cell label
+ * (replaces the Spanish abbreviations POR, MCD, MO… in the UI). */
+export const POS_FULL_LABELS: Record<string, string> = {
+  POR: "Goalkeeper",
+  LD: "Right-Back",
+  DFC: "Centre-Back",
+  LI: "Left-Back",
+  MCD: "Defensive Midfield",
+  MO: "Attacking Midfield",
+  ED: "Right Winger",
+  EI: "Left Winger",
+  DC: "Centre-Forward",
 };
 
 /** True when the leader's advantage can no longer be tied (strict: a reachable
