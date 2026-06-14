@@ -75,6 +75,7 @@
 .gc-prog .gp-n span{color:var(--txt-3);font-size:17px}
 .gc-prog .gp-l{font-family:var(--font-d);font-weight:600;font-size:11px;letter-spacing:.16em;color:var(--txt-3)}
 
+
 /* instruction hint */
 .ghint{position:absolute;top:200px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-u);font-weight:400;
   font-size:16px;color:var(--txt-3);display:flex;align-items:center;gap:9px}
