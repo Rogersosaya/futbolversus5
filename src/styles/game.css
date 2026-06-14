@@ -97,7 +97,7 @@
 .gpitch .pgoal.l{left:-2px}.gpitch .pgoal.r{right:-2px}
 
 /* tokens */
-.tok{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:7px;width:134px}
+.tok{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;width:134px}
 .tok .disc{width:66px;height:66px;border-radius:50%;position:relative;display:grid;place-items:center;transition:transform .15s}
 /* empty */
 .tok.empty .disc{border:2px dashed rgba(255,255,255,.5);background:rgba(8,20,12,.35)}
@@ -124,7 +124,6 @@
    gradient; box-shadow only draws the glow + drop. */
 .tok.fill .disc{box-shadow:0 0 20px -2px var(--own-glow),0 8px 16px rgba(0,0,0,.5)}
 .tok.fill .disc::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:var(--ring,var(--own));z-index:0}
-.tok.fill .disc::after{content:"";position:absolute;left:50%;bottom:-13px;width:34px;height:5px;border-radius:4px;background:var(--ring,var(--own));transform:translateX(-50%);box-shadow:0 0 10px var(--own-glow);z-index:2}
 .tok.fill.mine .nm{color:#fff}
 .tok.just .disc{animation:tokPop .45s cubic-bezier(.2,1.5,.4,1)}
 @keyframes tokPop{0%{transform:scale(.2);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}

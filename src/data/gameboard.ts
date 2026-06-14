@@ -42,28 +42,28 @@ export interface BoardCell {
 const LEFT: BoardCell[] = [
   { id: "l-gk", x: 6, y: 50, pos: "POR" },
   { id: "l-d1", x: 18, y: 15, pos: "LI" },
-  { id: "l-d2", x: 18, y: 38, pos: "DFC" },
-  { id: "l-d3", x: 18, y: 62, pos: "DFC" },
+  { id: "l-d2", x: 16.5, y: 38, pos: "DFC" },
+  { id: "l-d3", x: 16.5, y: 62, pos: "DFC" },
   { id: "l-d4", x: 18, y: 85, pos: "LD" },
   { id: "l-m1", x: 28, y: 30, pos: "MCD" },
-  { id: "l-m2", x: 36, y: 50, pos: "MO" },
+  { id: "l-m2", x: 33, y: 50, pos: "MO" },
   { id: "l-m3", x: 28, y: 70, pos: "MCD" },
   { id: "l-f1", x: 42, y: 22, pos: "EI" },
-  { id: "l-f2", x: 42, y: 50, pos: "DC" },
+  { id: "l-f2", x: 43.5, y: 50, pos: "DC" },
   { id: "l-f3", x: 42, y: 78, pos: "ED" },
 ];
 
 const RIGHT: BoardCell[] = [
   { id: "r-gk", x: 94, y: 50, pos: "POR" },
   { id: "r-d1", x: 82, y: 15, pos: "LD" },
-  { id: "r-d2", x: 82, y: 38, pos: "DFC" },
-  { id: "r-d3", x: 82, y: 62, pos: "DFC" },
+  { id: "r-d2", x: 83.5, y: 38, pos: "DFC" },
+  { id: "r-d3", x: 83.5, y: 62, pos: "DFC" },
   { id: "r-d4", x: 82, y: 85, pos: "LI" },
   { id: "r-m1", x: 72, y: 30, pos: "MCD" },
-  { id: "r-m2", x: 64, y: 50, pos: "MO" },
+  { id: "r-m2", x: 67, y: 50, pos: "MO" },
   { id: "r-m3", x: 72, y: 70, pos: "MCD" },
   { id: "r-f1", x: 58, y: 22, pos: "ED" },
-  { id: "r-f2", x: 58, y: 50, pos: "DC" },
+  { id: "r-f2", x: 56.5, y: 50, pos: "DC" },
   { id: "r-f3", x: 58, y: 78, pos: "EI" },
 ];
 
