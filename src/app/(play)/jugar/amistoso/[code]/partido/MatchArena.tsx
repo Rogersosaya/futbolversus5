@@ -495,8 +495,8 @@ export function MatchArena({
               </div>
             )}
 
-            {/* No `key` remount on cell change: re-targeting a cell must keep
-                the typed query and its dropdown intact. */}
+            {/* No `key` remount on cell change: re-targeting a cell keeps the
+                typed query (the dropdown closes itself, see PlayerSearch). */}
             <PlayerSearch
               code={room.code}
               cellId={selectedCell}
@@ -677,11 +677,20 @@ function PlayerSearch({
   const active = cellId != null && !disabled;
 
   // Focus follows the selection — including re-targeting another cell, which
-  // must NOT reset the typed query or its dropdown (the component stays
-  // mounted; only a successful claim clears it, in the submit handler).
+  // must NOT reset the typed query (the component stays mounted; only a
+  // successful claim clears it, in the submit handler).
   useEffect(() => {
     if (active) inputRef.current?.focus();
   }, [active, cellId]);
+
+  // Re-targeting another cell keeps the typed query but closes the stale
+  // dropdown: its suggestions were for the previous cell, so drop them (and
+  // invalidate any in-flight search) until the player edits the query again.
+  useEffect(() => {
+    seqRef.current++;
+    setHits([]);
+    setHighlight(0);
+  }, [cellId]);
 
   // Spell out the cause with the actual pick so the player learns the rule.
   const rejectMessage = (code: ClaimErrorCode, player: PlayerHit): string => {
