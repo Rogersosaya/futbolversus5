@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CrestArt, FlagSvg, Icon } from "@/components/svg";
+import { Stars, StatRow } from "@/components/lobby/parts";
 import { useOverlay, type GameMode } from "@/components/overlay-context";
 import {
   FRIENDS,
@@ -29,28 +30,6 @@ const CopyIcon = () => (
     <path d="M5 15V5a2 2 0 0 1 2-2h10" />
   </svg>
 );
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <div className="stars" style={{ "--r": `${rating * 0.9}%` } as CSSProperties}>
-      <span className="base">★★★★★</span>
-      <span className="fill">★★★★★</span>
-    </div>
-  );
-}
-
-function StatRow({ stats }: { stats: { label: string; value: string }[] }) {
-  return (
-    <div className="stats">
-      {stats.map((s) => (
-        <div className="stat" key={s.label}>
-          <span className="lab">{s.label}</span>
-          <span className="val">{s.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function TeamCard({ team, incoming }: { team: LobbyTeam; incoming?: boolean }) {
   return (
@@ -177,11 +156,12 @@ export function LobbyOverlay({ mode }: { mode: GameMode }) {
     playSlam();
   };
 
-  // Liga search: tick the timer and auto-find a rival after ~4.2s.
+  // Liga search: tick the timer (elapsed since this search started) and
+  // auto-find a rival after ~4.2s.
   useEffect(() => {
     if (mode !== "liga" || matchState !== "search") return;
-    setSeconds(0);
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const start = Date.now();
+    const interval = setInterval(() => setSeconds(Math.floor((Date.now() - start) / 1000)), 250);
     const timeout = setTimeout(goFound, 4200);
     return () => {
       clearInterval(interval);

@@ -173,7 +173,7 @@ export function GameOverlay({ mode }: { mode: GameMode }) {
         </div>
 
         <div className="gscore">
-          <div className="gs-team home">
+          <div className="gs-team">
             <span className="gs-cr">
               <CrestArt crest={GAME_ME.crest} fontSize={38} />
             </span>
@@ -196,7 +196,7 @@ export function GameOverlay({ mode }: { mode: GameMode }) {
           <div className="gs-num">
             <b>{scoreOp}</b>
           </div>
-          <div className="gs-team away">
+          <div className="gs-team gs-away">
             <span className="gs-cr">
               <CrestArt crest={GAME_OPP.crest} fontSize={38} />
             </span>

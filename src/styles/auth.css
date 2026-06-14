@@ -1,0 +1,229 @@
+/* AUTH SCREENS — login / register */
+
+.auth-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-0);
+  overflow: hidden;
+}
+
+.auth-page .bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.auth-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+}
+
+/* Brand */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.auth-mark {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(180deg, #e01536, #b30d28);
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 32px;
+  color: #fff;
+  letter-spacing: -0.02em;
+  box-shadow: 0 10px 28px -8px rgba(200, 16, 46, 0.6);
+}
+
+.auth-wordmark {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.18em;
+  color: var(--txt);
+  line-height: 1;
+}
+
+.auth-wordmark span {
+  color: var(--red);
+}
+
+.auth-tagline {
+  font-family: var(--font-d);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  color: var(--txt-3);
+  text-transform: uppercase;
+}
+
+/* Card */
+.auth-card {
+  width: 100%;
+  background: var(--bg-1);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Tabs */
+.auth-tabs {
+  display: flex;
+  border-radius: 10px;
+  background: var(--bg-2);
+  padding: 4px;
+  gap: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  height: 38px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--txt-3);
+  font-family: var(--font-d);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.auth-tab.on {
+  background: var(--panel-solid);
+  color: var(--txt);
+  border: 1px solid var(--line);
+}
+
+/* Fields */
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-field label {
+  font-family: var(--font-d);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--txt-3);
+  text-transform: uppercase;
+}
+
+.auth-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--txt);
+  font-family: var(--font-u);
+  font-size: 15px;
+  font-weight: 400;
+  padding: 13px 16px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+
+.auth-input:focus {
+  border-color: var(--line-strong);
+}
+
+.auth-input::placeholder {
+  color: var(--txt-4);
+}
+
+/* Error */
+.auth-error {
+  font-family: var(--font-u);
+  font-size: 14px;
+  color: #e06070;
+  line-height: 1.45;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.auth-success {
+  font-family: var(--font-u);
+  font-size: 14px;
+  color: var(--ok);
+  line-height: 1.45;
+  text-align: center;
+  padding: 2px 0;
+}
+
+/* Submit */
+.btn-auth {
+  width: 100%;
+  height: 54px;
+  background: linear-gradient(180deg, #e01536, #b30d28);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 10px 28px -10px rgba(200, 16, 46, 0.55);
+}
+
+.btn-auth:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.btn-auth:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-auth svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-auth { transition: opacity 0.15s; }
+  .btn-auth:hover:not(:disabled) { transform: none; }
+}
+
+/* Topbar avatar variants */
+.who u.av-veteran  { background: radial-gradient(circle at 50% 30%, #3a1828, #1a0c16) !important; border-color: rgba(200,16,46,.45) !important; }
+.who u.av-modern   { background: radial-gradient(circle at 50% 30%, #1a2c48, #0c1624) !important; border-color: rgba(40,100,200,.45) !important; }
+.who u.av-visionary { background: radial-gradient(circle at 50% 30%, #3c2c08, #1e1604) !important; border-color: rgba(200,160,50,.45) !important; }

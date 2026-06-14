@@ -1,7 +1,16 @@
 import Link from "next/link";
 
-import { Sym } from "@/components/svg";
-import { LEAGUES, currentLeagueIndex, currentLeagueInfo } from "@/data/leagues";
+import { Money, EUR_PER_MILLION, formatEuros } from "@/components/Money";
+import { LeagueUnlocks } from "@/components/LeagueUnlocks";
+import {
+  getLeagues,
+  getCollectibles,
+  currentLeagueIndex,
+  leagueProgress,
+  type Collectible,
+  type CollectibleKind,
+} from "@/actions/catalog";
+import { getSessionProfile } from "@/actions/profile";
 
 type StepState = "done" | "current" | "locked";
 
@@ -19,9 +28,21 @@ const LockMark = () => (
 );
 
 /** Ruta de Ligas view — sequential league progression by market value. */
-export default function LigasPage() {
-  const currentIdx = currentLeagueIndex();
-  const info = currentLeagueInfo();
+export default async function LigasPage() {
+  const [leagues, collectibles, session] = await Promise.all([
+    getLeagues(),
+    getCollectibles(),
+    getSessionProfile(),
+  ]);
+
+  const value = session.profile?.clubValue ?? 0;
+  const currentIdx = currentLeagueIndex(leagues, value);
+  const info = leagueProgress(leagues, value);
+
+  // Per-league collectibles, grouped by kind, for the unlock buttons + viewer.
+  const groups = new Map<string, Record<CollectibleKind, Collectible[]>>();
+  for (const l of leagues) groups.set(l.id, { CREST: [], AVATAR: [], STADIUM: [] });
+  for (const c of collectibles) groups.get(c.leagueId)?.[c.kind].push(c);
 
   return (
     <div className="ligas">
@@ -35,25 +56,27 @@ export default function LigasPage() {
           </Link>
           <h2 style={{ marginTop: 10 }}>RUTA DE LIGAS</h2>
           <div className="sh-sub">
-            Sube tu valor de mercado para ascender. Cada liga desbloquea nuevos clubes, avatares y
+            Sube el valor de tu club para ascender. Cada liga desbloquea nuevos escudos, avatares y
             estadios en el Mercado.
           </div>
         </div>
         <div className="lg-hud">
-          <span className="lg-hud-l">TU VALOR DE MERCADO</span>
-          <span className="lg-hud-v">€{info.value}M</span>
+          <span className="lg-hud-l">VALOR DE TU CLUB</span>
+          <Money euros={info.value * EUR_PER_MILLION} kind="value" size="lg" />
           {info.next && (
             <span className="lg-hud-n">
-              Próxima · {info.next.name} (€{info.next.req}M)
+              Próxima · {info.next.name} · {formatEuros(info.next.minMarketValue * EUR_PER_MILLION)}
             </span>
           )}
         </div>
       </div>
 
       <div className="road">
-        {LEAGUES.map((l, i) => {
+        {leagues.map((l, i) => {
           const st: StepState = i < currentIdx ? "done" : i === currentIdx ? "current" : "locked";
-          const reqTxt = i === 0 ? "LIGA INICIAL" : `DESDE €${l.req}M DE VALOR`;
+          const reqTxt =
+            i === 0 ? "LIGA INICIAL" : `DESDE ${formatEuros(l.minMarketValue * EUR_PER_MILLION)} DE VALOR`;
+          const g = groups.get(l.id) ?? { CREST: [], AVATAR: [], STADIUM: [] };
 
           return (
             <div key={l.id} className={`lg-step ${st}`}>
@@ -66,12 +89,12 @@ export default function LigasPage() {
                 <div className="lg-main">
                   <span className={`lg-em ${st}`}>
                     <svg viewBox="0 0 36 24" preserveAspectRatio="xMidYMid slice">
-                      <use href={`#flag-${l.flag}`} />
+                      <use href={`#flag-${l.countryCode}`} />
                     </svg>
                   </span>
                   <div className="lg-info">
                     <div className="lg-name">
-                      {l.name} <span className="lg-tier">NIVEL {i + 1}</span>
+                      {l.name} <span className="lg-tier">NIVEL {l.tier}</span>
                     </div>
                     <div className="lg-country">{l.country}</div>
                     <div className="lg-req">{reqTxt}</div>
@@ -81,27 +104,23 @@ export default function LigasPage() {
                   ) : st === "current" ? (
                     <span className="lg-status current">EN CURSO</span>
                   ) : (
-                    <span className="lg-status locked">€{l.req}M</span>
+                    <span className="lg-status locked">{formatEuros(l.minMarketValue * EUR_PER_MILLION)}</span>
                   )}
                 </div>
-                <div className="lg-unlocks">
-                  <span className="lg-unlock">
-                    <Sym id="ic-shield" /> {l.clubs} clubes
-                  </span>
-                  <span className="lg-unlock">
-                    <Sym id="ic-user" /> {l.avatars} avatares
-                  </span>
-                  <span className="lg-unlock">
-                    <Sym id="ic-stadium" /> {l.stadiums} estadios
-                  </span>
-                </div>
+                <LeagueUnlocks
+                  leagueName={l.name}
+                  leagueCountry={l.country}
+                  countryCode={l.countryCode}
+                  groups={g}
+                />
                 {st === "current" && info.next && (
                   <div className="lg-prog">
                     <div className="lg-prog-bar">
                       <i style={{ width: `${info.pct}%` }} />
                     </div>
                     <div className="lg-prog-tx">
-                      Te faltan <b>€{info.need}M</b> para ascender a <b>{info.next.name}</b>
+                      Te faltan <b>{formatEuros(info.need * EUR_PER_MILLION)}</b> para ascender a{" "}
+                      <b>{info.next.name}</b>
                     </div>
                   </div>
                 )}

@@ -1,0 +1,223 @@
+/* FUTBOL VERSUS — stadium-entry cinematic + live game room (arena) */
+
+/* ===== STADIUM ENTRY (lobby → game room cinematic) =====
+   Every layer runs one animation of duration --entry-ms (set from the shared
+   timeline constant in JS) with a negative --entry-offset delay, so a client
+   that refreshes mid-cinematic resumes at the exact frame the rival sees.
+   Materials are transform/opacity/filter only. */
+.stadium-entry{position:absolute;inset:0;z-index:40;overflow:hidden;pointer-events:none}
+.stadium-entry>*{animation-duration:var(--entry-ms);animation-delay:var(--entry-offset);animation-fill-mode:both;animation-timing-function:linear}
+
+/* base darkness: the lobby fades into the tunnel */
+.se-black{position:absolute;inset:0;background:#04060b;animation-name:seBlack}
+@keyframes seBlack{0%{opacity:0}8%,100%{opacity:1}}
+
+/* rushing tunnel: concentric light rings scaling toward the viewer */
+.se-rush{position:absolute;inset:-40%;animation-name:seRush;
+  background:repeating-radial-gradient(circle at 50% 56%,rgba(176,196,230,.08) 0 2px,transparent 2px 110px)}
+@keyframes seRush{0%,6%{opacity:0;transform:scale(.55)}16%{opacity:1}70%{opacity:.9;transform:scale(2.4)}82%,100%{opacity:0;transform:scale(2.7)}}
+.se-rush.r2{animation-name:seRush2;
+  background:repeating-radial-gradient(circle at 50% 56%,rgba(232,207,142,.06) 0 2px,transparent 2px 72px)}
+@keyframes seRush2{0%,10%{opacity:0;transform:scale(.4)}22%{opacity:1}70%{opacity:.8;transform:scale(3)}82%,100%{opacity:0;transform:scale(3.2)}}
+
+/* the light at the end of the tunnel, swallowing the screen at the burst */
+.se-mouth{position:absolute;left:50%;top:56%;width:46vmin;height:30vmin;border-radius:50% 50% 46% 46%;filter:blur(6px);
+  background:radial-gradient(closest-side,#fff7e0 0%,rgba(232,207,142,.85) 30%,rgba(120,140,190,.25) 62%,transparent 75%);
+  animation-name:seMouth}
+@keyframes seMouth{0%,6%{opacity:0;transform:translate(-50%,-50%) scale(.1)}16%{opacity:.9;transform:translate(-50%,-50%) scale(.4)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1.5)}84%{opacity:1;transform:translate(-50%,-50%) scale(7)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(9)}}
+
+/* floodlight beams at the burst */
+.se-beam{position:absolute;top:-20%;width:18vw;height:85vh;filter:blur(14px);opacity:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.85),transparent 70%)}
+.se-beam.b1{left:12%;animation-name:seBeam}
+.se-beam.b2{right:12%;animation-name:seBeamR}
+@keyframes seBeam{0%,72%{opacity:0;transform:rotate(26deg)}80%{opacity:.9;transform:rotate(18deg)}92%{opacity:.25;transform:rotate(15deg)}100%{opacity:0;transform:rotate(15deg)}}
+@keyframes seBeamR{0%,72%{opacity:0;transform:rotate(-26deg)}80%{opacity:.9;transform:rotate(-18deg)}92%{opacity:.25;transform:rotate(-15deg)}100%{opacity:0;transform:rotate(-15deg)}}
+
+/* whiteout into the pitch reveal */
+.se-flash{position:absolute;inset:0;background:#fff;animation-name:seFlash}
+@keyframes seFlash{0%,76%{opacity:0}81%{opacity:.95}88%{opacity:.15}100%{opacity:0}}
+.se-pitch{position:absolute;inset:0;animation-name:sePitch;
+  background:linear-gradient(180deg,rgba(4,6,11,.25) 0%,rgba(4,6,11,.7) 34%,rgba(23,94,48,.8) 100%)}
+@keyframes sePitch{0%,78%{opacity:0}88%,100%{opacity:1}}
+
+/* copy beats */
+.se-text{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:0 24px}
+.se-text>*{animation-duration:var(--entry-ms);animation-delay:var(--entry-offset);animation-fill-mode:both}
+.se-tag{display:inline-flex;align-items:center;height:36px;padding:0 18px;border-radius:40px;border:1px solid rgba(232,207,142,.4);
+  background:rgba(16,20,28,.55);font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.18em;color:var(--gold);
+  animation-name:seTextIn}
+.se-title{font-family:var(--font-d);font-weight:800;font-size:clamp(56px,9vw,96px);line-height:.88;color:#fff;
+  text-shadow:0 8px 60px rgba(0,0,0,.8),0 0 80px rgba(232,207,142,.25);text-wrap:balance;animation-name:seTitle}
+@keyframes seTitle{0%,12%{opacity:0;transform:translateY(26px) scale(.96)}22%{opacity:1;transform:none}64%{opacity:1;transform:none}74%,100%{opacity:0;transform:translateY(-14px)}}
+.se-clubs{display:flex;align-items:center;gap:16px;font-family:var(--font-d);font-weight:700;font-size:26px;letter-spacing:.04em;animation-name:seTextIn}
+.se-clubs b{color:#f3f5fa;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.se-clubs i{font-style:normal;font-weight:800;color:var(--red);text-shadow:0 0 18px rgba(200,16,46,.6)}
+@keyframes seTextIn{0%,16%{opacity:0;transform:translateY(14px)}28%{opacity:1;transform:none}64%{opacity:1}74%,100%{opacity:0}}
+
+/* lobby center while the sequence is arming/running */
+.ctx-sub.entering{display:flex;align-items:center;gap:10px;color:var(--txt-2);font-weight:500}
+.ctx-sub.entering .td{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(232,207,142,.8);animation:lgpulse 1.4s ease-in-out infinite}
+
+/* ===== ARENA (live game room) ===== */
+/* entrance: continuity from the cinematic's final dark+pitch frame */
+.arena .gscore{animation:arenaScore .7s cubic-bezier(.16,.9,.3,1) .15s both}
+@keyframes arenaScore{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
+.arena .gpitch-wrap{animation:arenaPitch .9s cubic-bezier(.22,.61,.36,1) .1s both}
+@keyframes arenaPitch{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+.arena .game-exit,.arena .arena-wait{animation:arenaFade .6s ease .5s both}
+@keyframes arenaFade{from{opacity:0}to{opacity:1}}
+
+/* pre-game status bar (replaces the gameplay control bar until it ships) */
+.arena-wait{position:absolute;top:126px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:12px;
+  height:54px;padding:0 24px;border-radius:13px;background:rgba(11,15,23,.92);border:1px solid var(--line);
+  box-shadow:0 22px 50px -18px rgba(0,0,0,.85);backdrop-filter:blur(6px)}
+.arena-wait .wd{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(232,207,142,.8);animation:lgpulse 1.4s ease-in-out infinite}
+.arena-wait span:last-child{font-family:var(--font-d);font-weight:600;font-size:15px;letter-spacing:.14em;color:var(--txt-2)}
+
+/* synchronized kickoff banner */
+.kickoff{position:absolute;inset:0;z-index:9;display:grid;place-items:center;pointer-events:none}
+.kickoff .ko-t{font-family:var(--font-d);font-weight:800;font-size:clamp(44px,6vw,84px);color:#fff;letter-spacing:.04em;
+  text-shadow:0 0 50px rgba(232,207,142,.5),0 10px 40px rgba(0,0,0,.7);animation:koIn 2.4s cubic-bezier(.16,.9,.3,1) both}
+@keyframes koIn{0%{opacity:0;transform:scale(1.5)}12%{opacity:1;transform:scale(1)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.94)}}
+
+/* rival connection notice */
+.conn-chip{position:absolute;top:34px;right:40px;z-index:8;display:flex;align-items:center;gap:10px;height:40px;padding:0 18px;
+  border-radius:30px;border:1px solid rgba(200,16,46,.5);background:rgba(200,16,46,.12);
+  font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.12em;color:#f0939f}
+.conn-chip .cd{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px rgba(200,16,46,.8);animation:lgpulse 1s ease-in-out infinite}
+
+/* match over: the rival abandoned */
+.arena-closed{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  text-align:center;background:rgba(4,6,11,.88);backdrop-filter:blur(4px);animation:arenaFade .4s ease both}
+
+/* ===== ONCE MUNDIALISTA — live gameplay ===== */
+
+/* kickoff countdown 3·2·1·¡A JUGAR! */
+.ko-intro{position:absolute;inset:0;z-index:9;display:grid;place-items:center;pointer-events:none;background:rgba(4,6,11,.42)}
+.ko-flash{position:absolute;inset:0;background:radial-gradient(60% 50% at 50% 50%,rgba(232,207,142,.22),transparent 70%);animation:koFlash 1s ease-out both}
+@keyframes koFlash{0%{opacity:1}100%{opacity:0}}
+.ko-num{font-family:var(--font-d);font-weight:800;font-size:clamp(120px,18vw,220px);line-height:1;color:#fff;
+  text-shadow:0 0 70px rgba(232,207,142,.55),0 14px 50px rgba(0,0,0,.8);animation:koNum 1s cubic-bezier(.16,.9,.3,1) both}
+@keyframes koNum{0%{opacity:0;transform:scale(2.1)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(.97)}100%{opacity:0;transform:scale(.9)}}
+.ko-num.go{font-size:clamp(64px,9vw,120px);color:var(--gold);letter-spacing:.04em}
+
+/* countdown timer urgency */
+.gs-time.low{color:var(--red);animation:lgpulse 1s ease-in-out infinite}
+
+/* cells are now buttons: reset chrome, mark free ones as targets */
+button.tok{background:transparent;border:0;padding:0;font:inherit;cursor:default}
+.tok.empty.free{cursor:pointer}
+.tok.empty.free:hover .disc{border-color:rgba(232,207,142,.85);background:rgba(232,207,142,.1);transform:scale(1.07)}
+.tok.empty.free:hover .pos{color:var(--gold)}
+
+/* nation card in penalty: 5s ring countdown replacing the flag */
+.gc-country.pen{border-color:rgba(200,16,46,.45);background:rgba(200,16,46,.08)}
+.pen-ring{width:46px;height:46px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--red) calc(var(--p)*360deg),rgba(255,255,255,.1) 0)}
+.pen-ring::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#10141d}
+.pen-ring b{position:relative;z-index:1;font-family:var(--font-d);font-weight:800;font-size:20px;color:#f0939f}
+.gc-ctx .pen-txt{color:#f0939f;font-size:22px}
+
+/* search field + dropdown */
+.psearch{position:relative}
+.gc-input.off{border-color:var(--line);box-shadow:none;opacity:.6}
+.gc-input.off svg{color:var(--txt-3)}
+.gc-input.err{border-color:rgba(200,16,46,.7);box-shadow:0 0 0 4px rgba(200,16,46,.12);animation:psShake .3s ease}
+@keyframes psShake{0%,100%{transform:none}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+
+/* rejection toasts (top-right): spell out WHY the pick didn't count */
+.gtoasts{position:absolute;top:88px;right:40px;z-index:14;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
+.gtoast{display:flex;align-items:center;gap:11px;max-width:380px;padding:11px 18px;border-radius:11px;
+  background:rgba(16,9,12,.94);border:1px solid rgba(200,16,46,.55);box-shadow:0 18px 44px -14px rgba(0,0,0,.9),0 0 18px -6px rgba(200,16,46,.5);
+  backdrop-filter:blur(6px);animation:gtIn .28s cubic-bezier(.16,.9,.3,1) both}
+.gtoast svg{width:17px;height:17px;flex:0 0 auto;color:var(--red)}
+.gtoast span{font-family:var(--font-u);font-weight:500;font-size:15px;line-height:1.3;color:#f6dde1}
+@keyframes gtIn{from{opacity:0;transform:translateX(18px) scale(.96)}to{opacity:1;transform:none}}
+.ps-drop{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:9;display:flex;flex-direction:column;overflow:hidden;
+  border-radius:11px;border:1px solid var(--line-strong);background:rgba(10,14,21,.97);
+  box-shadow:0 26px 60px -16px rgba(0,0,0,.9);backdrop-filter:blur(8px);animation:arenaFade .15s ease both}
+.ps-row{display:flex;align-items:center;gap:12px;padding:8px 14px;border:0;background:transparent;cursor:pointer;text-align:left}
+.ps-row.on{background:rgba(232,207,142,.12)}
+.ps-row .ps-ph{width:38px;height:38px;border-radius:50%;overflow:hidden;flex:0 0 auto;position:relative;
+  background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.ps-row .ps-ph img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
+.ps-row .ps-ph .sil{position:absolute;inset:0;color:#3c4658;padding:5px 5px 0;display:block}
+.ps-row .ps-ph .sil svg{width:100%;height:100%}
+.ps-row .ps-nm{font-family:var(--font-u);font-weight:500;font-size:17px;color:#eef1f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-row.on .ps-nm{color:var(--gold)}
+
+/* nation flag is a remote image (Transfermarkt) */
+.gc-flag img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* disabled control-bar buttons */
+.gc-change:disabled{opacity:.5;cursor:default}
+.gc-change:disabled:hover{border-color:var(--line);background:rgba(255,255,255,.03)}
+
+/* early-finish (unreachable lead) */
+.early-finish{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:10px;
+  height:50px;padding:0 26px;border-radius:30px;border:1px solid rgba(232,207,142,.55);cursor:pointer;
+  background:rgba(16,20,28,.92);color:var(--gold);font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:.12em;
+  box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 0 rgba(232,207,142,.35);animation:efPulse 1.6s ease-in-out infinite}
+.early-finish svg{width:18px;height:18px}
+.early-finish:hover{background:rgba(232,207,142,.14)}
+@keyframes efPulse{0%,100%{box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 0 rgba(232,207,142,.35)}
+  50%{box-shadow:0 18px 44px -12px rgba(0,0,0,.85),0 0 0 9px rgba(232,207,142,0)}}
+
+/* result screen */
+.match-result{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  text-align:center;background:rgba(4,6,11,.9);backdrop-filter:blur(5px);animation:arenaFade .45s ease both}
+.mr-title{font-family:var(--font-d);font-weight:800;font-size:clamp(56px,9vw,96px);line-height:.9;color:#fff;
+  text-shadow:0 8px 60px rgba(0,0,0,.8);animation:mrIn .7s cubic-bezier(.16,.9,.3,1) both}
+@keyframes mrIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+.match-result.win .mr-title{color:var(--gold);text-shadow:0 0 80px rgba(232,207,142,.45),0 8px 60px rgba(0,0,0,.8)}
+.match-result.lose .mr-title{color:#f0939f;text-shadow:0 0 70px rgba(200,16,46,.4),0 8px 60px rgba(0,0,0,.8)}
+.mr-score{display:flex;align-items:center;gap:18px;padding:14px 26px;border-radius:14px;background:rgba(10,14,21,.94);border:1px solid var(--line)}
+.mr-side{display:flex;align-items:center;gap:12px}
+.mr-side.away{flex-direction:row-reverse}
+.mr-cr{width:42px;height:42px}.mr-cr svg{width:100%;height:100%}
+.mr-club{font-family:var(--font-d);font-weight:700;font-size:20px;letter-spacing:.05em;color:#f2f5fa;max-width:220px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mr-num{font-family:var(--font-u);font-weight:700;font-size:44px;color:#fff;font-variant-numeric:tabular-nums}
+.mr-dash{font-size:30px;color:var(--txt-3)}
+.mr-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center}
+.mr-btn{height:52px;padding:0 34px;border-radius:30px;border:1px solid rgba(232,207,142,.55);cursor:pointer;
+  background:rgba(232,207,142,.12);color:var(--gold);font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.14em;transition:all .18s}
+.mr-btn:hover{background:rgba(232,207,142,.22)}
+/* rematch handshake: ask → waiting → incoming (rival asked first) */
+.mr-rematch{display:flex;align-items:center;gap:10px;height:52px;padding:0 34px;border-radius:30px;cursor:pointer;
+  border:1px solid rgba(238,241,247,.5);background:rgba(238,241,247,.1);color:#eef1f7;
+  font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:.14em;transition:all .18s}
+.mr-rematch svg{width:17px;height:17px}
+.mr-rematch:hover:not(:disabled){background:rgba(238,241,247,.2)}
+.mr-rematch.waiting{cursor:default;color:var(--txt-2);border-color:var(--line-strong);background:rgba(255,255,255,.04)}
+.mr-rematch.waiting svg{animation:mrSpin 1.2s linear infinite}
+@keyframes mrSpin{to{transform:rotate(360deg)}}
+.mr-rematch.incoming{border-color:rgba(232,207,142,.7);background:rgba(232,207,142,.16);color:var(--gold);
+  animation:efPulse 1.6s ease-in-out infinite}
+.mr-rematch.incoming:hover:not(:disabled){background:rgba(232,207,142,.26)}
+
+/* ===== reduced motion ===== */
+@media (prefers-reduced-motion: reduce){
+  .ko-flash{display:none}
+  .ko-num{animation:koReducedNum 1s ease both}
+  @keyframes koReducedNum{0%{opacity:0}15%{opacity:1}85%{opacity:1}100%{opacity:0}}
+  .gc-input.err{animation:none}
+  .gtoast{animation:none}
+  .early-finish{animation:none}
+  .mr-rematch.waiting svg,.mr-rematch.incoming{animation:none}
+  .gs-time.low{animation:none}
+  .tok.empty.free:hover .disc{transform:none}
+  .se-rush,.se-rush.r2,.se-mouth,.se-beam,.se-flash{display:none}
+  .se-black{animation:none;opacity:1}
+  .se-pitch{animation-name:sePitchReduced}
+  @keyframes sePitchReduced{0%,70%{opacity:0}90%,100%{opacity:1}}
+  .se-title,.se-tag,.se-clubs{animation-name:seTextReduced}
+  @keyframes seTextReduced{0%,10%{opacity:0}20%{opacity:1}70%{opacity:1}80%,100%{opacity:0}}
+  .arena .gscore,.arena .gpitch-wrap,.arena .game-exit,.arena .arena-wait{animation:none}
+  .kickoff .ko-t{animation:koReduced 2.4s ease both}
+  @keyframes koReduced{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}
+  .arena-wait .wd,.conn-chip .cd,.ctx-sub.entering .td{animation:none}
+}

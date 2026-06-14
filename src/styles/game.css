@@ -13,22 +13,37 @@
   -webkit-mask:linear-gradient(180deg,#000,transparent);mask:linear-gradient(180deg,#000,transparent)}
 
 /* ===== UNIVERSAL SCOREBOARD ===== */
-.gscore{position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:stretch;height:78px;
-  border-radius:11px;overflow:hidden;box-shadow:0 20px 50px -14px rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.08)}
-.gs-team{display:flex;align-items:center;gap:14px;padding:0 22px;background:rgba(10,14,21,.94);min-width:230px}
-.gs-team.away{flex-direction:row-reverse}
-.gs-team .gs-cr{width:44px;height:44px;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+/* CSS Grid, not flex: five explicit tracks so nothing can ever overlap.
+   [ home name (1fr) | score | clock | score | away name (1fr) ]
+   The two 1fr columns are equal → the board is always symmetric; the three
+   center tracks are fixed → scores and clock can never be squeezed. */
+.gscore{position:absolute;top:26px;left:0;right:0;margin-inline:auto;width:min(860px,calc(100% - 72px));z-index:6;
+  display:grid;grid-template-columns:minmax(0,1fr) 84px 140px 84px minmax(0,1fr);align-items:stretch;height:76px;
+  background:rgba(10,14,21,.96);backdrop-filter:blur(6px);border-radius:12px;overflow:hidden;
+  box-shadow:0 20px 50px -14px rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.08)}
+/* team identity (crest + name); away mirrors it toward the center */
+.gs-team{min-width:0;display:flex;align-items:center;gap:13px;padding:0 20px}
+.gs-team.gs-away{flex-direction:row-reverse}
+.gs-team .gs-cr{width:42px;height:42px;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
 .gs-team .gs-cr svg{width:100%;height:100%}
-.gs-team .gs-id{display:flex;flex-direction:column;line-height:1;gap:5px}
-.gs-team.away .gs-id{align-items:flex-end}
-.gs-team .gs-nm{font-family:var(--font-d);font-weight:700;font-size:23px;letter-spacing:.05em;color:#f2f5fa}
-.gs-team .gs-pr{font-family:var(--font-u);font-weight:400;font-size:14px;color:var(--txt-3)}
-.gs-team .gs-bar{width:5px;align-self:stretch;margin:14px 0;border-radius:4px}
-.gs-num{display:flex;align-items:center;justify-content:center;min-width:74px;background:rgba(6,9,14,.97)}
-.gs-num b{font-family:var(--font-u);font-weight:700;font-size:50px;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
-.gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 20px;background:#0c1018;min-width:118px;
-  border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06)}
-.gs-time{font-family:var(--font-u);font-weight:700;font-size:32px;color:#fff;letter-spacing:.04em;line-height:.9;font-variant-numeric:tabular-nums}
+.gs-team .gs-id{min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1;gap:5px;overflow:hidden}
+.gs-team.gs-away .gs-id{align-items:flex-end;text-align:right}
+.gs-team .gs-nm{font-family:var(--font-d);font-weight:700;font-size:22px;letter-spacing:.03em;color:#f2f5fa;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gs-team .gs-pr{font-family:var(--font-u);font-weight:400;font-size:13.5px;color:var(--txt-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gs-team .gs-bar{flex:0 0 auto;width:4px;align-self:stretch;margin:15px 0;border-radius:4px}
+/* score tracks: white digits (max contrast), team color carried by the underline.
+   A faint darker fill groups the score+clock+score cluster in the center. */
+.gs-num{display:flex;align-items:center;justify-content:center;position:relative;background:rgba(0,0,0,.18)}
+.gs-num b{font-family:var(--font-u);font-weight:700;font-size:50px;line-height:1;font-variant-numeric:tabular-nums;
+  color:#fff;text-shadow:0 0 24px var(--own-glow,transparent)}
+.gs-num::after{content:"";position:absolute;left:16px;right:16px;bottom:11px;height:3px;border-radius:3px;
+  background:var(--ring,var(--own,transparent));box-shadow:0 0 10px var(--own-glow,transparent)}
+/* center clock track, framed by hairline dividers and anchored a touch darker */
+.gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:rgba(0,0,0,.34);
+  border-inline:1px solid rgba(255,255,255,.1)}
+.gs-time{font-family:var(--font-u);font-weight:700;font-size:44px;color:#fff;letter-spacing:.02em;line-height:.9;font-variant-numeric:tabular-nums}
 .gs-half{display:flex;align-items:center;gap:7px;font-family:var(--font-d);font-weight:600;font-size:12px;letter-spacing:.18em;color:var(--gold)}
 .gs-half .lv{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 7px var(--gold);animation:lgpulse 1.3s ease-in-out infinite}
 
@@ -60,6 +75,7 @@
 .gc-prog .gp-n span{color:var(--txt-3);font-size:17px}
 .gc-prog .gp-l{font-family:var(--font-d);font-weight:600;font-size:11px;letter-spacing:.16em;color:var(--txt-3)}
 
+
 /* instruction hint */
 .ghint{position:absolute;top:200px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-u);font-weight:400;
   font-size:16px;color:var(--txt-3);display:flex;align-items:center;gap:9px}
@@ -82,7 +98,7 @@
 .gpitch .pgoal.l{left:-2px}.gpitch .pgoal.r{right:-2px}
 
 /* tokens */
-.tok{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:7px;width:134px}
+.tok{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;width:134px}
 .tok .disc{width:66px;height:66px;border-radius:50%;position:relative;display:grid;place-items:center;transition:transform .15s}
 /* empty */
 .tok.empty .disc{border:2px dashed rgba(255,255,255,.5);background:rgba(8,20,12,.35)}
@@ -96,7 +112,7 @@
 .tok.sel .nm{font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.08em;color:var(--gold)}
 /* filled */
 .tok.fill .disc{overflow:visible}
-.tok.fill .photo{width:100%;height:100%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);position:relative}
+.tok.fill .photo{width:100%;height:100%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 32%,#2a3346,#10141d);position:relative;z-index:1}
 .tok.fill .photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
 .tok.fill .photo .sil{position:absolute;inset:0;color:#3c4658;padding:9px 9px 0}
 .tok.fill .photo .sil svg{width:100%;height:100%}
@@ -104,9 +120,11 @@
   box-shadow:0 0 0 1.5px #0b0e14,0 2px 5px rgba(0,0,0,.5)}
 .tok.fill .fl svg{display:block;width:100%;height:100%}
 .tok.fill .nm{font-family:var(--font-u);font-weight:600;font-size:13.5px;color:#fff;text-align:center;text-shadow:0 2px 5px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9);white-space:nowrap;width:134px;overflow:hidden;text-overflow:ellipsis}
-/* owner colors set via inline --own; ring + glow + base bar */
-.tok.fill .disc{box-shadow:0 0 0 3px var(--own),0 0 20px -2px var(--own-glow),0 8px 16px rgba(0,0,0,.5)}
-.tok.fill .disc::after{content:"";position:absolute;left:50%;bottom:-13px;width:34px;height:5px;border-radius:4px;background:var(--own);transform:translateX(-50%);box-shadow:0 0 10px var(--own-glow)}
+/* owner colors set via inline --own (accent) + --ring (club identity, gradient
+   when the club has two colors). The ring is a real element so it can carry a
+   gradient; box-shadow only draws the glow + drop. */
+.tok.fill .disc{box-shadow:0 0 20px -2px var(--own-glow),0 8px 16px rgba(0,0,0,.5)}
+.tok.fill .disc::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:var(--ring,var(--own));z-index:0}
 .tok.fill.mine .nm{color:#fff}
 .tok.just .disc{animation:tokPop .45s cubic-bezier(.2,1.5,.4,1)}
 @keyframes tokPop{0%{transform:scale(.2);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}
