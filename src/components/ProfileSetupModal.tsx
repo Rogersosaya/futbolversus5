@@ -20,7 +20,7 @@ const STEP_META: Record<Step, { title: string; sub: string; label: string }> = {
     label: "IDENTIDAD",
   },
   avatar: {
-    title: "TU IMAGEN",
+    title: "TU AVATAR",
     sub: "El mundo te verá así. Elige quién quieres ser.",
     label: "IMAGEN",
   },
