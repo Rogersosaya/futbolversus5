@@ -35,8 +35,11 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname === "/login";
+  // The OAuth callback runs while still unauthenticated (it's the request that
+  // establishes the session), so it must never be bounced to /login.
+  const isAuthRoute = pathname.startsWith("/auth/");
 
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     // Come back to the original destination after signing in (e.g. an invite
