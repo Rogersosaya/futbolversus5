@@ -99,18 +99,12 @@
 .ko-intro{position:absolute;inset:0;z-index:9;display:grid;place-items:center;pointer-events:none;background:rgba(4,6,11,.42)}
 .ko-flash{position:absolute;inset:0;background:radial-gradient(60% 50% at 50% 50%,rgba(232,207,142,.22),transparent 70%);animation:koFlash 1s ease-out both}
 @keyframes koFlash{0%{opacity:1}100%{opacity:0}}
+/* each number holds ~2s (matches COUNTDOWN_STEP_MS): quick scale-in, long hold,
+   gentle scale-out just before the next number takes over */
 .ko-num{font-family:var(--font-d);font-weight:800;font-size:clamp(120px,18vw,220px);line-height:1;color:#fff;
-  text-shadow:0 0 70px rgba(232,207,142,.55),0 14px 50px rgba(0,0,0,.8);animation:koNum 1s cubic-bezier(.16,.9,.3,1) both}
-@keyframes koNum{0%{opacity:0;transform:scale(2.1)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(.97)}100%{opacity:0;transform:scale(.9)}}
+  text-shadow:0 0 70px rgba(232,207,142,.55),0 14px 50px rgba(0,0,0,.8);animation:koNum 2s cubic-bezier(.16,.9,.3,1) both}
+@keyframes koNum{0%{opacity:0;transform:scale(2.1)}9%{opacity:1;transform:scale(1)}88%{opacity:1;transform:scale(.99)}100%{opacity:0;transform:scale(.9)}}
 .ko-num.go{font-size:clamp(64px,9vw,120px);color:var(--gold);letter-spacing:.04em}
-
-/* handoff hold: arena mounted, shared countdown anchor not reached yet */
-.ko-intro.pre{background:rgba(4,6,11,.32)}
-.ko-ready{font-family:var(--font-d);font-weight:800;letter-spacing:.16em;
-  font-size:clamp(28px,5vw,56px);color:rgba(255,255,255,.86);
-  text-shadow:0 0 40px rgba(232,207,142,.4),0 10px 36px rgba(0,0,0,.7);
-  animation:koReady 1.1s ease-in-out infinite}
-@keyframes koReady{0%,100%{opacity:.55;transform:scale(.98)}50%{opacity:1;transform:scale(1)}}
 
 /* optimistic token: placed instantly, validating on the server (spinner over
    the disc); the spinner clears the moment it's confirmed definitively */
@@ -226,8 +220,8 @@ button.tok{background:transparent;border:0;padding:0;font:inherit;cursor:default
 /* ===== reduced motion ===== */
 @media (prefers-reduced-motion: reduce){
   .ko-flash{display:none}
-  .ko-num{animation:koReducedNum 1s ease both}
-  @keyframes koReducedNum{0%{opacity:0}15%{opacity:1}85%{opacity:1}100%{opacity:0}}
+  .ko-num{animation:koReducedNum 2s ease both}
+  @keyframes koReducedNum{0%{opacity:0}8%{opacity:1}90%{opacity:1}100%{opacity:0}}
   .gc-input.err{animation:none}
   .gtoast{animation:none}
   .early-finish{animation:none}

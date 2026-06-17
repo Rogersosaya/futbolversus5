@@ -206,12 +206,11 @@ const toSnapshot = (room: MatchRoom, gameName: string | null): RoomSnapshot => (
  * Pings the room topic so the rival's client learns the match is officially on.
  *
  * The countdown anchor (`startedAt`) is DETERMINISTIC, derived from the shared
- * `readyAt` (not `now`): `readyAt + ENTRY_MS + HANDOFF_MS`. Both players read
- * the identical value from their snapshot, so the synchronized 3·2·1 runs over
- * the exact same wall-clock window no matter who navigates first — no
- * truncated "3", no overlap with the lobby's stadium-entry beat. The lobby
- * navigates at `readyAt + ENTRY_MS`, so the anchor is still ~HANDOFF_MS in the
- * future when each client mounts the arena.
+ * `readyAt` (not `now`): `readyAt + ENTRY_MS + HANDOFF_MS`. The entry cinematic
+ * runs in the lobby and the lobby navigates here at `readyAt + ENTRY_MS`, so
+ * the anchor is still ~HANDOFF_MS in the FUTURE when the arena mounts: the
+ * board renders first, then the synchronized 3·2·1 plays over it (identical on
+ * both screens, no truncated "3"), and claims open at `startedAt + COUNTDOWN_MS`.
  */
 export async function markRoomInGame(room: MatchRoom): Promise<void> {
   if (!room.readyAt) return;

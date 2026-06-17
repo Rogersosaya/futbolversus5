@@ -363,6 +363,8 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
         const p = phaseAt(elapsed);
         setPhase(p);
         if (p === "done") {
+          // Entry finished — hand off to the game room, where the 3·2·1 plays
+          // over the board. The pitch cover stays up through the navigation.
           goToArena();
           return;
         }
@@ -482,7 +484,10 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
           <div className="lb-col">{renderRight()}</div>
         </div>
 
-        {(phase === "entry" || phase === "done") && readyAt != null && rival && (
+        {/* The entry cinematic, kept on screen through "done" too: its held
+            final frame (an opaque pitch) covers the navigation to the game room
+            so the bare lobby never flashes before /partido renders. */}
+        {phase != null && readyAt != null && rival && (
           <StadiumEntry
             readyAt={readyAt}
             skew={skew}

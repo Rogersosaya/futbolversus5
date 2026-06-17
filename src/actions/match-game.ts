@@ -11,7 +11,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { notifyRooms } from "@/lib/realtime-server";
 import { generateRoomCode } from "@/lib/room-code";
-import { TIMELINE_TOTAL_MS } from "@/lib/match-timeline";
+import { ENTRY_MS } from "@/lib/match-timeline";
 import { BOARD_CELLS } from "@/data/gameboard";
 import {
   CLAIM_GRACE_MS,
@@ -590,10 +590,11 @@ export async function requestRematchCore(
   if (!fresh) return null;
 
   if (fresh.hostRematchAt && fresh.guestRematchAt && !fresh.rematchCode) {
-    // Both agreed and nobody published yet — I create the rematch room. The
-    // backdated readyAt makes any lobby visit redirect straight to the game
-    // room, where the READY→IN_GAME promotion stamps a fresh startedAt and
-    // shuffles a fresh deck (the synchronized 3-2-1 runs from there).
+    // Both agreed and nobody published yet — I create the rematch room.
+    // Rematch goes result screen → game room directly (no lobby, no entry
+    // cinematic). readyAt is backdated by ENTRY_MS so the promotion stamps a
+    // startedAt = now + HANDOFF_MS (in the FUTURE): the arena shows the board,
+    // then the synchronized 3·2·1 over it, with a fresh deck.
     const newCode = generateRoomCode();
     const created = await prisma.matchRoom.create({
       data: {
@@ -604,7 +605,7 @@ export async function requestRematchCore(
         gameId: fresh.gameId,
         difficulty: fresh.difficulty,
         durationS: fresh.durationS,
-        readyAt: new Date(Date.now() - TIMELINE_TOTAL_MS),
+        readyAt: new Date(Date.now() - ENTRY_MS),
       },
     });
     const published = await prisma.matchRoom.updateMany({

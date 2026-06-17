@@ -37,6 +37,7 @@ import type { SelfMatchCard } from "@/actions/friends";
 import { BOARD_CELLS } from "@/data/gameboard";
 import {
   COUNTDOWN_MS,
+  COUNTDOWN_STEP_MS,
   PENALTY_MS,
   POS_FULL_LABELS,
   isLeadUnreachable,
@@ -540,7 +541,7 @@ export function MatchArena({
     phase === "finished" ? "FINAL" : noLimit ? "SIN LÍMITE" : "SEGUNDOS";
   const countdownTick = Math.min(
     3,
-    Math.max(0, Math.floor((nowS - game.startedAt) / 1000)),
+    Math.max(0, Math.floor((nowS - game.startedAt) / COUNTDOWN_STEP_MS)),
   );
   const penaltyLeft = penalized
     ? Math.max(0, (game.myPenaltyUntil ?? 0) - nowS)
@@ -763,16 +764,13 @@ export function MatchArena({
           </div>
         </div>
 
-        {phase === "countdown" &&
-          (nowS < game.startedAt ? (
-            // Handoff hold: the arena is mounted but the shared countdown anchor
-            // hasn't arrived yet — keep a calm beat so the "3" isn't truncated.
-            <div className="ko-intro pre" aria-hidden>
-              <div className="ko-ready">PREPARADOS</div>
-            </div>
-          ) : (
-            <CountdownIntro tick={countdownTick} />
-          ))}
+        {/* The 3·2·1 plays OVER the board (which is already rendered behind it).
+            During the brief handoff (nowS < startedAt) the board simply shows on
+            its own; the countdown appears once the shared anchor is reached so
+            the "3" is never truncated, and it's gone the instant play begins. */}
+        {phase === "countdown" && nowS >= game.startedAt && (
+          <CountdownIntro tick={countdownTick} />
+        )}
 
         {phase === "finished" && game.result && (
           <ResultScreen

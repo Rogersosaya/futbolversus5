@@ -2,8 +2,11 @@
  * (plain data) and imported by the server actions as the single source of
  * truth for timing windows and cell→position validation. */
 
-/** 3 → 2 → 1 → ¡A JUGAR! intro, derived from the room's startedAt. */
-export const COUNTDOWN_MS = 4_000;
+/** Each countdown number (3, 2, 1) is held this long before the next. */
+export const COUNTDOWN_STEP_MS = 2_000;
+/** 3 → 2 → 1 intro window (then ¡A JUGAR! / kickoff), derived from startedAt.
+ * Three numbers × COUNTDOWN_STEP_MS. */
+export const COUNTDOWN_MS = 3 * COUNTDOWN_STEP_MS;
 /** Host-selectable match durations (seconds); 0 = no time limit. */
 export const DURATION_OPTIONS = [60, 120, 240, 0] as const;
 export const DEFAULT_DURATION_S = 120;
