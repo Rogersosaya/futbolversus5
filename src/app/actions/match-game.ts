@@ -21,12 +21,20 @@ import {
 } from "@/actions/match-game";
 import type { MatchRoom } from "@/generated/prisma/client";
 
+/**
+ * Resolve the caller from the session cookie. Uses `getClaims()`, which
+ * verifies the JWT signature LOCALLY (no round-trip to the Auth server) when
+ * the project uses asymmetric signing keys — so the in-game hot path
+ * (searchPlayers on every keystroke, claimCell, changeNation) no longer pays a
+ * network hop per call. Falls back to a remote check only if local
+ * verification isn't possible.
+ */
 async function requireUser(): Promise<string | null> {
   const supabase = await createSSRClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  const { data, error } = await supabase.auth.getClaims();
+  const sub = data?.claims?.sub;
+  if (error || !sub) return null;
+  return sub;
 }
 
 async function memberRoom(code: string, userId: string): Promise<MatchRoom | null> {

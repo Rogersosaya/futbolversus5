@@ -18,9 +18,6 @@ import { createClient } from "@/lib/supabase-browser";
 import { roomTopicFor, SYNC_EVENT } from "@/lib/realtime-topics";
 import {
   ENTRY_MS,
-  HOLD_MS,
-  SLAM_MS,
-  TIMELINE_TOTAL_MS,
   phaseAt,
   type MatchPhase,
 } from "@/lib/match-timeline";
@@ -196,6 +193,7 @@ function InvitePanel({
  * presentational — its clock is the shared room timeline: `offsetMs` (how far
  * into the beat this client is) becomes a negative animation-delay, so a
  * refresh mid-cinematic resumes at the exact same frame the rival is seeing.
+ * It is the ONLY pre-kickoff beat, anchored directly at `readyAt`.
  */
 function StadiumEntry({
   readyAt,
@@ -209,9 +207,7 @@ function StadiumEntry({
   rivalClub: string;
 }) {
   // Frozen at mount so re-renders never restart the CSS animations.
-  const [offsetMs] = useState(() =>
-    Math.max(Date.now() + skew - readyAt - SLAM_MS - HOLD_MS, 0),
-  );
+  const [offsetMs] = useState(() => Math.max(Date.now() + skew - readyAt, 0));
   const vars = {
     "--entry-ms": `${ENTRY_MS}ms`,
     "--entry-offset": `${-offsetMs}ms`,
@@ -370,8 +366,8 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
           goToArena();
           return;
         }
-        const next = [SLAM_MS, SLAM_MS + HOLD_MS, TIMELINE_TOTAL_MS].find((b) => b > elapsed)!;
-        defer(tick, Math.max(next - elapsed, 16));
+        // Single beat: the stadium entry runs until ENTRY_MS, then we navigate.
+        defer(tick, Math.max(ENTRY_MS - elapsed, 16));
       };
       defer(tick);
     }
@@ -459,9 +455,7 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
   return (
     <div className="lobby-layer on">
       <div
-        className={`lobby amistoso st-${ready || status === "IN_GAME" ? "ready" : "invite"}${
-          phase === "slam" ? " slamming shaking" : ""
-        }`}
+        className={`lobby amistoso st-${ready || status === "IN_GAME" ? "ready" : "invite"}`}
       >
         <div className="bg">
           <div className="streaks" />
@@ -487,15 +481,6 @@ export function RoomLobby({ initial }: { initial: RoomLobbyData }) {
           <div className="lobby-center">{renderCenter()}</div>
           <div className="lb-col">{renderRight()}</div>
         </div>
-
-        {phase === "slam" && (
-          <div className="vs-slam">
-            <div className="slam-flash" />
-            <div className="slam-gash" />
-            <div className="slam-ring" />
-            <div className="slam-vs">VS</div>
-          </div>
-        )}
 
         {(phase === "entry" || phase === "done") && readyAt != null && rival && (
           <StadiumEntry

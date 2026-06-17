@@ -28,6 +28,8 @@ import {
 import type { ArenaData } from "@/actions/matchroom";
 import type {
   ClaimErrorCode,
+  ClaimResult,
+  ClaimView,
   MatchGameState,
   PlayerHit,
 } from "@/actions/match-game";
@@ -110,6 +112,34 @@ function clubTheme(colors: string[] | undefined, fallback: string): SideTheme {
 const sideStyle = (t: SideTheme): CSSProperties =>
   ({ "--own": t.own, "--own-glow": t.glow, "--ring": t.ring } as CSSProperties);
 
+/** Server-clock corrections smaller than this are ignored, so realtime
+ * refetches can't jolt the countdown/match clock for sub-second skew jitter. */
+const SKEW_THRESHOLD_MS = 750;
+
+/** Max suggestions shown in the search dropdown. */
+const SEARCH_LIMIT = 8;
+
+/** Accent/case-insensitive fold so "mbappe" matches "Mbappé". */
+const normalize = (s: string) =>
+  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+type LocalPlayer = PlayerHit & { norm: string };
+
+/** Instant, zero-network substring match over the preloaded top-players index.
+ * Index order is already "most valuable first", so we keep it. */
+function localSearch(index: LocalPlayer[], term: string): PlayerHit[] {
+  const q = normalize(term.trim());
+  if (q.length < 2) return [];
+  const out: PlayerHit[] = [];
+  for (const p of index) {
+    if (p.norm.includes(q)) {
+      out.push({ id: p.id, name: p.name, imageUrl: p.imageUrl });
+      if (out.length >= SEARCH_LIMIT) break;
+    }
+  }
+  return out;
+}
+
 const CLAIM_ERROR_COPY: Record<ClaimErrorCode, string> = {
   WRONG_POSITION: "No juega en esa posición",
   WRONG_NATION: "¡No es de tu selección!",
@@ -170,12 +200,22 @@ type Phase = "countdown" | "playing" | "finished" | "closed";
 export function MatchArena({
   initial,
   initialGame,
+  playerIndex,
 }: {
   initial: ArenaData;
   initialGame: MatchGameState;
+  /** Top players (id + name + photo) preloaded for instant local search. */
+  playerIndex: PlayerHit[];
 }) {
   const router = useRouter();
   const { room, me, rival } = initial;
+
+  // Normalized once for accent-insensitive local matching (filled during the
+  // pre-kickoff dead time, so the first keystroke is already instant).
+  const localIndex = useMemo<LocalPlayer[]>(
+    () => playerIndex.map((p) => ({ ...p, norm: normalize(p.name) })),
+    [playerIndex],
+  );
 
   // Each seat is themed by its club's colors (gradient when it has two);
   // falls back to the classic light/red scheme for clubless players.
@@ -190,10 +230,18 @@ export function MatchArena({
   const [nowS, setNowS] = useState(() => Date.now() + (initialGame.serverNow - Date.now()));
   const [rivalPresent, setRivalPresent] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  /** Optimistically placed claims (by cellId) awaiting server confirmation —
+   * the token shows instantly and is reconciled/rolled back on the response. */
+  const [pendingClaims, setPendingClaims] = useState<Map<string, ClaimView>>(
+    () => new Map(),
+  );
   /** Top-right rejection toasts explaining WHY a pick didn't count. */
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
 
   const leavingRef = useRef(false);
+  /** Guards "Cambiar" against double-fire in the same tick (before the optimistic
+   * penalty flips `penalized` and disables the button). */
+  const changingRef = useRef(false);
   /** Last full-time finalize attempt (epoch ms) — throttles the retry loop. */
   const finalizeAtRef = useRef(0);
   const toastSeqRef = useRef(0);
@@ -212,10 +260,14 @@ export function MatchArena({
           ? "countdown"
           : "playing";
 
-  const claimsByCell = useMemo(
-    () => new Map(game.claims.map((c) => [c.cellId, c])),
-    [game.claims],
-  );
+  // Confirmed server claims win; an optimistic pending claim fills a cell only
+  // while the server hasn't reported it yet — so a realtime refetch can never
+  // wipe a token mid-flight, and a rival's real claim always takes precedence.
+  const claimsByCell = useMemo(() => {
+    const m = new Map(game.claims.map((c) => [c.cellId, c]));
+    for (const [cellId, pc] of pendingClaims) if (!m.has(cellId)) m.set(cellId, pc);
+    return m;
+  }, [game.claims, pendingClaims]);
   const penalized = game.myPenaltyUntil != null && game.myPenaltyUntil > nowS;
 
   // Selection only exists while actually playable — derived, so a penalty or
@@ -232,7 +284,13 @@ export function MatchArena({
     phase === "playing" && isLeadUnreachable(leader, other, freeCells);
 
   const adoptServerNow = useCallback((serverNow: number) => {
-    setSkew(serverNow - Date.now());
+    // Only adopt meaningful corrections (reconnects, real drift). Ignoring
+    // sub-threshold jitter keeps the countdown and match clock from stuttering
+    // when a realtime refetch returns a slightly different serverNow.
+    setSkew((prev) => {
+      const next = serverNow - Date.now();
+      return Math.abs(next - prev) > SKEW_THRESHOLD_MS ? next : prev;
+    });
   }, []);
 
   const refetch = useCallback(async () => {
@@ -334,35 +392,84 @@ export function MatchArena({
     setSelectedCell((cur) => (cur === cellId ? null : cellId));
   };
 
-  const onClaimSuccess = useCallback(
-    (res: Extract<Awaited<ReturnType<typeof claimCell>>, { ok: true }>) => {
+  const dropPending = useCallback((cellId: string) => {
+    setPendingClaims((prev) => {
+      if (!prev.has(cellId)) return prev;
+      const m = new Map(prev);
+      m.delete(cellId);
+      return m;
+    });
+  }, []);
+
+  /** Place the pick INSTANTLY (optimistic token), then validate on the server.
+   * On success the token is confirmed; on rejection it's rolled back and the
+   * reason is surfaced. Returns the raw result so the search box can shake /
+   * keep the query for a fast retry. */
+  const submitClaim = useCallback(
+    async (cellId: string, player: PlayerHit): Promise<ClaimResult> => {
+      // Optimistic: show the token instantly. The cell stays selected for now
+      // (it reads as "filled" while pending, so the search deactivates) — on a
+      // wrong guess we roll the token back and the selection re-activates for an
+      // instant retry; only success clears it.
+      setPendingClaims((prev) =>
+        new Map(prev).set(cellId, {
+          cellId,
+          playerName: player.name,
+          playerImageUrl: player.imageUrl,
+          mine: true,
+          pending: true,
+        }),
+      );
+
+      const res = await claimCell(room.code, cellId, player.id);
       adoptServerNow(res.serverNow);
-      setGame((prev) => ({
-        ...prev,
-        claims: prev.claims.some((c) => c.cellId === res.claim.cellId)
-          ? prev.claims
-          : [...prev.claims, res.claim],
-        myScore: res.myScore,
-        myNation: res.myNation,
-        myNationIdx: res.myNationIdx,
-      }));
-      setSelectedCell(null);
+      dropPending(cellId);
+
+      if (res.ok) {
+        // Confirm: move from pending into the authoritative claims, free the cell.
+        setGame((prev) => ({
+          ...prev,
+          claims: prev.claims.some((c) => c.cellId === res.claim.cellId)
+            ? prev.claims
+            : [...prev.claims, res.claim],
+          myScore: res.myScore,
+          myNation: res.myNation,
+          myNationIdx: res.myNationIdx,
+        }));
+        setSelectedCell(null);
+      } else if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
+        // Board moved under us — resync and drop the now-invalid selection.
+        setSelectedCell(null);
+        refetch();
+      }
+      return res;
     },
-    [adoptServerNow],
+    [room.code, adoptServerNow, dropPending, refetch],
   );
 
   const onChangeNation = async () => {
-    if (phase !== "playing" || penalized) return;
+    if (phase !== "playing" || penalized || changingRef.current) return;
+    changingRef.current = true;
     setSelectedCell(null);
-    const res = await changeNation(room.code);
-    adoptServerNow(res.serverNow);
-    if (res.ok) {
-      setGame((prev) => ({
-        ...prev,
-        myNation: res.myNation,
-        myNationIdx: res.myNationIdx,
-        myPenaltyUntil: res.myPenaltyUntil,
-      }));
+    // Optimistic: start the penalty ring NOW so the button disables and the UI
+    // reacts instantly; the server reconciles the exact window on response.
+    setGame((prev) => ({
+      ...prev,
+      myPenaltyUntil: Date.now() + skew + PENALTY_MS,
+    }));
+    try {
+      const res = await changeNation(room.code);
+      adoptServerNow(res.serverNow);
+      if (res.ok) {
+        setGame((prev) => ({
+          ...prev,
+          myNation: res.myNation,
+          myNationIdx: res.myNationIdx,
+          myPenaltyUntil: res.myPenaltyUntil,
+        }));
+      }
+    } finally {
+      changingRef.current = false;
     }
   };
 
@@ -506,18 +613,14 @@ export function MatchArena({
             {/* No `key` remount on cell change: re-targeting a cell keeps the
                 typed query (the dropdown closes on outside click, see PlayerSearch). */}
             <PlayerSearch
-              code={room.code}
+              localIndex={localIndex}
               cellId={selectedCell}
               posLabel={selectedPos}
               nationName={game.myNation.name}
               disabled={phase !== "playing" || penalized}
-              onSuccess={onClaimSuccess}
-              onServerNow={adoptServerNow}
+              onSubmit={submitClaim}
               onReject={pushToast}
-              onCellGone={(lost) => {
-                if (lost) refetch();
-                setSelectedCell(null);
-              }}
+              onCellGone={() => setSelectedCell(null)}
             />
 
             <button
@@ -570,7 +673,7 @@ export function MatchArena({
                 return (
                   <div
                     key={cell.id}
-                    className={`tok fill just${claim.mine ? " mine" : ""}`}
+                    className={`tok fill just${claim.mine ? " mine" : ""}${claim.pending ? " pending" : ""}`}
                     style={{ ...pos, ...sideStyle(side) }}
                   >
                     <div className="disc">
@@ -607,7 +710,16 @@ export function MatchArena({
           </div>
         </div>
 
-        {phase === "countdown" && <CountdownIntro tick={countdownTick} />}
+        {phase === "countdown" &&
+          (nowS < game.startedAt ? (
+            // Handoff hold: the arena is mounted but the shared countdown anchor
+            // hasn't arrived yet — keep a calm beat so the "3" isn't truncated.
+            <div className="ko-intro pre" aria-hidden>
+              <div className="ko-ready">PREPARADOS</div>
+            </div>
+          ) : (
+            <CountdownIntro tick={countdownTick} />
+          ))}
 
         {phase === "finished" && game.result && (
           <ResultScreen
@@ -640,37 +752,38 @@ export function MatchArena({
   );
 }
 
-const SEARCH_DEBOUNCE_MS = 220;
+/** Debounce for the SERVER fallback only — local index results are instant. */
+const SEARCH_DEBOUNCE_MS = 120;
 
 /**
  * The claim flow: disabled until a free cell is selected, autofocused on
- * activation (the parent remounts it per selection via `key`, so state resets
- * naturally), dropdown from 3 characters (most valuable players first),
- * keyboard-navigable; picking a player submits the claim immediately —
- * a wrong pick just shakes and lets you retry (no penalty by design).
+ * activation, dropdown from 2 characters served INSTANTLY from the preloaded
+ * top-players index (zero network), with a debounced server fallback only when
+ * the local list isn't full (rare names). Keyboard-navigable; picking a player
+ * submits an OPTIMISTIC claim (token shows at once in the parent) and a wrong
+ * pick just shakes and lets you retry instantly (no penalty by design).
  */
 function PlayerSearch({
-  code,
+  localIndex,
   cellId,
   posLabel,
   nationName,
   disabled,
-  onSuccess,
-  onServerNow,
+  onSubmit,
   onReject,
   onCellGone,
 }: {
-  code: string;
+  localIndex: LocalPlayer[];
   cellId: string | null;
   posLabel: string | null;
   nationName: string;
   disabled: boolean;
-  onSuccess: (res: Extract<Awaited<ReturnType<typeof claimCell>>, { ok: true }>) => void;
-  onServerNow: (serverNow: number) => void;
+  /** Place the pick (optimistically) and validate; resolves with the result. */
+  onSubmit: (cellId: string, player: PlayerHit) => Promise<ClaimResult>;
   /** Surface a rejection toast explaining WHY the pick didn't count. */
   onReject: (msg: string) => void;
-  /** Drop the selection; `lost` = the board moved under us (resync needed). */
-  onCellGone: (lost?: boolean) => void;
+  /** Drop the selection (Escape on an empty query). */
+  onCellGone: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlayerHit[]>([]);
@@ -682,8 +795,26 @@ function PlayerSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const seqRef = useRef(0);
+  /** Synchronous in-flight guard: blocks a double-submit within the same tick,
+   * before `submitting` state has a chance to re-render the disabled rows. */
+  const submittingRef = useRef(false);
+  /** Per-session memo of server fallback responses, keyed by normalized query. */
+  const cacheRef = useRef(new Map<string, PlayerHit[]>());
 
   const active = cellId != null && !disabled;
+
+  // Merge server hits after the instant local ones (deduped, capped).
+  const mergeServer = useCallback((local: PlayerHit[], server: PlayerHit[]) => {
+    const seen = new Set(local.map((h) => h.id));
+    const merged = [...local];
+    for (const s of server) {
+      if (seen.has(s.id)) continue;
+      merged.push(s);
+      if (merged.length >= SEARCH_LIMIT) break;
+    }
+    setHits(merged);
+    setHighlight(0);
+  }, []);
 
   // Focus follows the selection — including re-targeting another cell, which
   // must NOT reset the typed query (the component stays mounted; only a
@@ -692,10 +823,8 @@ function PlayerSearch({
     if (active) inputRef.current?.focus();
   }, [active, cellId]);
 
-  // Close the dropdown on any click outside the input + suggestions (e.g.
-  // re-targeting another cell, or clicking anywhere else on the pitch). The
-  // typed query stays; only the stale suggestions go (with any in-flight
-  // search invalidated) until the player edits the query again.
+  // Close the dropdown on any click outside the input + suggestions. The typed
+  // query stays; only the stale suggestions go until the player edits again.
   useEffect(() => {
     if (hits.length === 0) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -723,44 +852,49 @@ function PlayerSearch({
     }
   };
 
-  // Debounced search with a sequence guard against out-of-order responses.
-  // Short/cleared queries empty the dropdown from the change handler, so the
-  // effect only ever schedules real lookups.
+  // Debounced SERVER fallback, scheduled only when the instant local list (set
+  // synchronously in onQueryChange) isn't full — i.e. a rare name outside the
+  // top index. The merge runs inside the timer, never synchronously here.
   useEffect(() => {
-    if (!active || query.trim().length < 3) return;
+    if (!active) return;
+    const q = query.trim();
+    if (q.length < 3) return;
+    const local = localSearch(localIndex, q);
+    if (local.length >= SEARCH_LIMIT) return;
+    const key = q.toLowerCase();
+    const cached = cacheRef.current.get(key);
     const seq = ++seqRef.current;
-    const t = setTimeout(async () => {
-      const found = await searchPlayers(query);
-      if (seqRef.current !== seq) return;
-      setHits(found);
-      setHighlight(0);
-    }, SEARCH_DEBOUNCE_MS);
+    const t = setTimeout(
+      async () => {
+        const found = cached ?? (await searchPlayers(q));
+        if (!cached) cacheRef.current.set(key, found);
+        if (seqRef.current !== seq) return;
+        mergeServer(local, found);
+      },
+      cached ? 0 : SEARCH_DEBOUNCE_MS,
+    );
     return () => clearTimeout(t);
-  }, [query, active]);
+  }, [query, active, localIndex, mergeServer]);
 
   const submit = async (player: PlayerHit) => {
-    if (!cellId || submitting) return;
+    if (!cellId || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError(false);
-    const res = await claimCell(code, cellId, player.id);
+    const res = await onSubmit(cellId, player);
+    submittingRef.current = false;
     setSubmitting(false);
-    onServerNow(res.serverNow);
-    if (res.ok) {
-      // Fresh search for the next cell.
+    if (res.ok || res.code === "CELL_TAKEN" || res.code === "ENDED") {
+      // Fresh search for the next cell (the parent cleared/kept the selection).
       seqRef.current++;
       setQuery("");
       setHits([]);
       setHighlight(0);
-      onSuccess(res);
+      if (!res.ok) onReject(rejectMessage(res.code, player));
       return;
     }
+    // Wrong guess: explain it, shake, keep the query for an instant retry.
     onReject(rejectMessage(res.code, player));
-    if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
-      // The board moved under us — the parent resyncs and drops the selection.
-      onCellGone(true);
-      return;
-    }
-    // Wrong guess: shake, keep the query, let them retry instantly.
     setError(true);
     inputRef.current?.focus();
   };
@@ -768,25 +902,19 @@ function PlayerSearch({
   const onQueryChange = (value: string) => {
     setQuery(value);
     setError(false);
-    if (value.trim().length < 3) {
-      seqRef.current++;
-      setHits([]);
-      setHighlight(0);
-    }
+    // Instant local suggestions (event-driven, so no setState-in-effect).
+    seqRef.current++;
+    const q = value.trim();
+    setHits(q.length < 2 ? [] : localSearch(localIndex, q));
+    setHighlight(0);
   };
 
-  // Clicking back into the input reopens a dropdown that an outside click had
-  // closed: the query is still there, so re-run the search now to bring the
-  // suggestions back (no-op when it's already open or the query is too short).
+  // Clicking back into the input re-runs the local search to reopen a dropdown
+  // an outside click had closed (no-op when already open or query too short).
   const reopenDropdown = () => {
-    if (!active || submitting || hits.length > 0 || query.trim().length < 3) return;
-    const seq = ++seqRef.current;
-    searchPlayers(query).then((found) => {
-      if (seqRef.current === seq) {
-        setHits(found);
-        setHighlight(0);
-      }
-    });
+    if (!active || submitting || hits.length > 0 || query.trim().length < 2) return;
+    setHits(localSearch(localIndex, query));
+    setHighlight(0);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

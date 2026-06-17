@@ -6,6 +6,8 @@
 // nation, timing window, penalty) on the server clock; races are settled by
 // the DB unique constraints, and scores are derived (COUNT of claims), so the
 // whole game state survives reloads and reconnections.
+import { unstable_cache } from "next/cache";
+
 import { prisma } from "@/lib/prisma";
 import { notifyRooms } from "@/lib/realtime-server";
 import { generateRoomCode } from "@/lib/room-code";
@@ -43,6 +45,9 @@ export interface ClaimView {
   playerName: string;
   playerImageUrl: string | null;
   mine: boolean;
+  /** Client-only: an optimistically placed claim awaiting server confirmation
+   * (never set by the server). */
+  pending?: boolean;
 }
 
 /** Role-relative snapshot. The rival's nation/penalty is NEVER included — it's
@@ -138,6 +143,29 @@ async function nationViewOf(room: MatchRoom, idx: number): Promise<NationView> {
     flagUrl: team?.teamImageUrl ?? null,
   };
 }
+
+/** How many top players to ship to the client for instant local suggestions. */
+const PLAYER_INDEX_SIZE = 1500;
+
+/**
+ * The most valuable players (id + name + photo only) for the in-game search
+ * box to match LOCALLY, with zero network round-trips per keystroke. Carries no
+ * position/country, so it leaks nothing about the answers — guessing is still
+ * the game; the server stays the sole validator on claim. Identical for every
+ * match, so it's cached for a day (one query amortized across all rooms) and
+ * passed into the arena at render time, filling the pre-kickoff dead time.
+ */
+export const getTopPlayersIndex = unstable_cache(
+  async (): Promise<PlayerHit[]> =>
+    prisma.$queryRaw<PlayerHit[]>`
+      SELECT "player_id" AS id, "name", "image_url" AS "imageUrl"
+      FROM "players"
+      WHERE "main_position" IS NOT NULL AND "main_position" <> 'Missing'
+      ORDER BY "highest_market_value_in_eur" DESC NULLS LAST, "name" ASC
+      LIMIT ${PLAYER_INDEX_SIZE}`,
+  ["match-top-players-index"],
+  { revalidate: 86_400, tags: ["match-top-players-index"] },
+);
 
 /** Accent-insensitive substring search, most valuable players first. Global on
  * purpose (no position/country filter — that knowledge is the challenge). */

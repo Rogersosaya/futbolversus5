@@ -104,6 +104,19 @@
 @keyframes koNum{0%{opacity:0;transform:scale(2.1)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(.97)}100%{opacity:0;transform:scale(.9)}}
 .ko-num.go{font-size:clamp(64px,9vw,120px);color:var(--gold);letter-spacing:.04em}
 
+/* handoff hold: arena mounted, shared countdown anchor not reached yet */
+.ko-intro.pre{background:rgba(4,6,11,.32)}
+.ko-ready{font-family:var(--font-d);font-weight:800;letter-spacing:.16em;
+  font-size:clamp(28px,5vw,56px);color:rgba(255,255,255,.86);
+  text-shadow:0 0 40px rgba(232,207,142,.4),0 10px 36px rgba(0,0,0,.7);
+  animation:koReady 1.1s ease-in-out infinite}
+@keyframes koReady{0%,100%{opacity:.55;transform:scale(.98)}50%{opacity:1;transform:scale(1)}}
+
+/* optimistic token: placed instantly, awaiting server confirmation */
+.tok.pending{opacity:.82}
+.tok.pending .disc{animation:tokPending 1s ease-in-out infinite}
+@keyframes tokPending{0%,100%{box-shadow:0 0 0 0 var(--own-glow)}50%{box-shadow:0 0 0 5px transparent}}
+
 /* countdown timer urgency */
 .gs-time.low{color:var(--red);animation:lgpulse 1s ease-in-out infinite}
 

@@ -5,6 +5,7 @@
 // src/app/actions/matchroom.ts ("use server").
 import { prisma } from "@/lib/prisma";
 import { notifyInvites, notifyRooms } from "@/lib/realtime-server";
+import { ENTRY_MS, HANDOFF_MS } from "@/lib/match-timeline";
 import { buildNationCycle } from "@/actions/match-game";
 import {
   getFriends,
@@ -203,13 +204,23 @@ const toSnapshot = (room: MatchRoom, gameName: string | null): RoomSnapshot => (
  * shuffled nation cycle (difficulty-sized FIFA top), so both players walk one
  * identical deck — the loser's shuffle is discarded with its no-op update.
  * Pings the room topic so the rival's client learns the match is officially on.
+ *
+ * The countdown anchor (`startedAt`) is DETERMINISTIC, derived from the shared
+ * `readyAt` (not `now`): `readyAt + ENTRY_MS + HANDOFF_MS`. Both players read
+ * the identical value from their snapshot, so the synchronized 3·2·1 runs over
+ * the exact same wall-clock window no matter who navigates first — no
+ * truncated "3", no overlap with the lobby's stadium-entry beat. The lobby
+ * navigates at `readyAt + ENTRY_MS`, so the anchor is still ~HANDOFF_MS in the
+ * future when each client mounts the arena.
  */
 export async function markRoomInGame(room: MatchRoom): Promise<void> {
+  if (!room.readyAt) return;
   const nationCycle = await buildNationCycle(room.difficulty);
   const now = new Date();
+  const startedAt = new Date(room.readyAt.getTime() + ENTRY_MS + HANDOFF_MS);
   const promoted = await prisma.matchRoom.updateMany({
     where: { id: room.id, status: "READY", readyAt: { not: null } },
-    data: { status: "IN_GAME", startedAt: now, nationCycle, updatedAt: now },
+    data: { status: "IN_GAME", startedAt, nationCycle, updatedAt: now },
   });
   if (promoted.count > 0) await notifyRooms([room.id]);
 }

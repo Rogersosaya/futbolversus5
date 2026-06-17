@@ -162,7 +162,9 @@
 .state-switch .ss:hover{color:var(--txt)}
 .state-switch .ss.on{background:var(--red);color:#fff}
 
-/* ===== VS SLAM (liga search → found) ===== */
+/* ===== VS SLAM (liga search → found) =====
+   NOTE: the amistoso RoomLobby no longer uses this beat, but the general
+   matchmaking LobbyOverlay (GameShell) still does — keep these styles. */
 .lobby.shaking{animation:lbShake .55s cubic-bezier(.36,.07,.19,.97)}
 @keyframes lbShake{10%{transform:translate(-4px,3px)}20%{transform:translate(6px,-4px)}30%{transform:translate(-7px,4px)}40%{transform:translate(6px,3px)}
   50%{transform:translate(-4px,-3px)}60%{transform:translate(4px,4px)}70%{transform:translate(-3px,-2px)}80%{transform:translate(3px,2px)}90%{transform:translate(-2px,1px)}100%{transform:none}}

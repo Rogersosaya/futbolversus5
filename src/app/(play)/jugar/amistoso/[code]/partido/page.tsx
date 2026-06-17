@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthUserId } from "@/actions/profile";
 import { getArenaData, getRoomByCode, markRoomInGame } from "@/actions/matchroom";
-import { getMatchGameStateCore } from "@/actions/match-game";
+import { getMatchGameStateCore, getTopPlayersIndex } from "@/actions/match-game";
 
 import { RoomUnavailable } from "../RoomUnavailable";
 import { MatchArena } from "./MatchArena";
@@ -48,10 +48,11 @@ export default async function MatchArenaPage({
     }
   }
 
-  const [arena, game] = await Promise.all([
+  const [arena, game, playerIndex] = await Promise.all([
     getArenaData(room, userId),
     getMatchGameStateCore(room, userId),
+    getTopPlayersIndex(),
   ]);
   if (!arena || !game) redirect(`/jugar/amistoso/${code}`);
-  return <MatchArena initial={arena} initialGame={game} />;
+  return <MatchArena initial={arena} initialGame={game} playerIndex={playerIndex} />;
 }

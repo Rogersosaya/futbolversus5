@@ -8,17 +8,29 @@
 // players, survives refreshes (a reload resumes mid-beat instead of
 // restarting) and tolerates latency differences — nobody waits on anybody
 // else's local state.
+//
+// The pre-kickoff sequence is intentionally minimal: there is no "opponent
+// found" flourish. The lobby plays exactly ONE beat — the stadium-entry
+// cinematic — and then navigates to the game room, where the synchronized
+// 3·2·1 countdown runs. The game room's `started_at` is stamped
+// deterministically as `readyAt + ENTRY_MS + HANDOFF_MS`, so both players share
+// the exact same countdown window regardless of who navigates first.
 
-/** Beat 1 — the VS slam (match found). */
-export const SLAM_MS = 1100;
-/** Beat 2 — hold on the matched rival while "entering" is announced. */
-export const HOLD_MS = 1000;
-/** Beat 3 — stadium-entry cinematic (tunnel → floodlights → pitch). */
+/** The only pre-kickoff beat: the stadium-entry cinematic (tunnel →
+ * floodlights → pitch). Anchored at `readyAt`. */
 export const ENTRY_MS = 3800;
-/** Elapsed time (from readyAt) at which clients navigate to the game room. */
-export const TIMELINE_TOTAL_MS = SLAM_MS + HOLD_MS + ENTRY_MS;
 
-export type MatchPhase = "slam" | "hold" | "entry" | "done";
+/** Lobby → game-room handoff cushion. The lobby navigates at
+ * `readyAt + ENTRY_MS`; the countdown anchor (`started_at`) is pushed
+ * `HANDOFF_MS` further out so it is still in the FUTURE when each client mounts
+ * the arena — guaranteeing the "3" is shown in full and never truncated by a
+ * slow navigation/mount. */
+export const HANDOFF_MS = 650;
+
+/** Elapsed time (from readyAt) at which clients navigate to the game room. */
+export const TIMELINE_TOTAL_MS = ENTRY_MS;
+
+export type MatchPhase = "entry" | "done";
 
 /** Whether the full entry timeline already elapsed for a given anchor. */
 export function timelineDone(readyAt: Date | number | null): boolean {
@@ -29,8 +41,5 @@ export function timelineDone(readyAt: Date | number | null): boolean {
 
 /** The beat a given elapsed-since-readyAt falls in. */
 export function phaseAt(elapsedMs: number): MatchPhase {
-  if (elapsedMs < SLAM_MS) return "slam";
-  if (elapsedMs < SLAM_MS + HOLD_MS) return "hold";
-  if (elapsedMs < TIMELINE_TOTAL_MS) return "entry";
-  return "done";
+  return elapsedMs < ENTRY_MS ? "entry" : "done";
 }
