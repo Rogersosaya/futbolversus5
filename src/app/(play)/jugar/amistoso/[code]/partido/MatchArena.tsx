@@ -88,26 +88,23 @@ const mixWhite = (hex: string, t: number) => {
   return `#${toHex(m(r))}${toHex(m(g))}${toHex(m(b))}`;
 };
 
-const rgba = (hex: string, a: number) => {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-};
-
 const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
 
 /** Build a side theme from a club's 1–2 colors. The ring preserves the raw club
- * colors (a gradient when there are two); the single `own` accent is the most
- * visible color, lightened if it'd disappear on the near-black arena. */
+ * colors (a HARD half/half split when there are two — no gradient); the single
+ * `own` accent is the most visible color, lightened if it'd disappear on the
+ * near-black arena. `glow` is transparent: representative colors carry NO glow. */
 function clubTheme(colors: string[] | undefined, fallback: string): SideTheme {
   const cs = (colors ?? []).filter((c) => HEX_RE.test(c));
   if (cs.length === 0) {
-    return { own: fallback, glow: rgba(fallback, 0.72), ring: fallback };
+    return { own: fallback, glow: "transparent", ring: fallback };
   }
   const brightest = cs.reduce((a, b) => (luminance(b) > luminance(a) ? b : a));
   const own = luminance(brightest) < 0.16 ? mixWhite(brightest, 0.55) : brightest;
+  // Two colors → crisp half/half (hard stop at 50%); one color → solid.
   const ring =
-    cs.length >= 2 ? `linear-gradient(135deg, ${cs[0]}, ${cs[1]})` : cs[0];
-  return { own, glow: rgba(own, 0.72), ring };
+    cs.length >= 2 ? `linear-gradient(135deg, ${cs[0]} 50%, ${cs[1]} 50%)` : cs[0];
+  return { own, glow: "transparent", ring };
 }
 
 const sideStyle = (t: SideTheme): CSSProperties =>
@@ -193,7 +190,7 @@ function ScoreTeam({
       </div>
       <span
         className="gs-bar"
-        style={{ background: theme.ring, boxShadow: `0 0 10px ${theme.glow}` }}
+        style={{ background: theme.ring }}
       />
     </div>
   );

@@ -39,11 +39,12 @@ const rgba = (hex: string, a: number) => {
 /**
  * CSS custom properties themed by a club's 1–2 representative colors, for the
  * lobby player card:
- * - `--ring`: the raw club identity — a solid color, or a 2-stop gradient when
- *   the club has two colors (crest glow, accent rule).
+ * - `--ring`: the raw club identity — a solid color, or a HARD half-and-half
+ *   split (no gradient blend) when the club has two colors.
  * - `--accent`: the primary color guaranteed legible (lifted off near-black)
  *   for the avatar border and the PRESIDENTE label.
- * - `--glow` / `--tint`: translucent derivatives for halos and the surface wash.
+ * - `--glow`: kept transparent — representative colors carry NO glow.
+ * - `--tint`: translucent derivative for the card's surface wash.
  * Falls back to brand gold when the club has no colors set.
  */
 export function clubCardVars(colors: string[] | undefined): CSSProperties {
@@ -52,9 +53,10 @@ export function clubCardVars(colors: string[] | undefined): CSSProperties {
   const c2 = cs[1] ?? c1;
   const accent = luminance(c1) < 0.16 ? mixWhite(c1, 0.5) : c1;
   return {
-    "--ring": cs.length >= 2 ? `linear-gradient(135deg, ${c1}, ${c2})` : c1,
+    // Two colors → crisp half/half (hard stop at 50%); one color → solid.
+    "--ring": cs.length >= 2 ? `linear-gradient(135deg, ${c1} 50%, ${c2} 50%)` : c1,
     "--accent": accent,
-    "--glow": rgba(accent, 0.5),
+    "--glow": "transparent",
     "--tint": rgba(c1, 0.2),
   } as CSSProperties;
 }
