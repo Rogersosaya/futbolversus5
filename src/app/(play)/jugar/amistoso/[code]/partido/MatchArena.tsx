@@ -158,6 +158,18 @@ const Silhouette = () => (
   </span>
 );
 
+/** Spinning ring — the "processing / validating" indicator. */
+const Spinner = ({ className = "" }: { className?: string }) => (
+  <svg className={`spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Top-right notice variants: a pick being validated, the pass, or the reason
+ * it failed. */
+type ToastKind = "loading" | "success" | "error";
+
 function ScoreTeam({
   player,
   theme,
@@ -235,8 +247,10 @@ export function MatchArena({
   const [pendingClaims, setPendingClaims] = useState<Map<string, ClaimView>>(
     () => new Map(),
   );
-  /** Top-right rejection toasts explaining WHY a pick didn't count. */
-  const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
+  /** Top-right notices: a pick being validated → its result (valid, or WHY not). */
+  const [toasts, setToasts] = useState<
+    { id: number; msg: string; kind: ToastKind }[]
+  >([]);
 
   const leavingRef = useRef(false);
   /** Guards "Cambiar" against double-fire in the same tick (before the optimistic
@@ -369,11 +383,32 @@ export function MatchArena({
     router.replace(`/jugar/amistoso/${game.rematchCode}/partido`);
   }, [game.rematchCode, router]);
 
-  const pushToast = useCallback((msg: string) => {
-    const id = ++toastSeqRef.current;
-    setToasts((prev) => [...prev.slice(-3), { id, msg }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  const dismissToast = useCallback((id: number, delay: number) => {
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), delay);
   }, []);
+
+  /** Add a notice. "loading" stays until it's resolved; the rest auto-dismiss. */
+  const pushToast = useCallback(
+    (msg: string, kind: ToastKind = "error") => {
+      const id = ++toastSeqRef.current;
+      setToasts((prev) => [...prev.slice(-3), { id, msg, kind }]);
+      if (kind !== "loading") dismissToast(id, 3500);
+      return id;
+    },
+    [dismissToast],
+  );
+
+  /** Morph an existing notice in place (e.g. "Validando…" → "✓ válido") and
+   * schedule its dismissal — so the user sees one notice change, not a stack. */
+  const resolveToast = useCallback(
+    (id: number, msg: string, kind: ToastKind) => {
+      setToasts((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, msg, kind } : t)),
+      );
+      dismissToast(id, 3000);
+    },
+    [dismissToast],
+  );
 
   const leave = async () => {
     leavingRef.current = true;
@@ -540,10 +575,18 @@ export function MatchArena({
         {toasts.length > 0 && (
           <div className="gtoasts">
             {toasts.map((t) => (
-              <div key={t.id} className="gtoast">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
+              <div key={t.id} className={`gtoast ${t.kind}`}>
+                {t.kind === "loading" ? (
+                  <Spinner />
+                ) : t.kind === "success" ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                )}
                 <span>{t.msg}</span>
               </div>
             ))}
@@ -619,7 +662,8 @@ export function MatchArena({
               nationName={game.myNation.name}
               disabled={phase !== "playing" || penalized}
               onSubmit={submitClaim}
-              onReject={pushToast}
+              onValidating={(name) => pushToast(`Validando a ${name}…`, "loading")}
+              onResolve={resolveToast}
               onCellGone={() => setSelectedCell(null)}
             />
 
@@ -685,6 +729,11 @@ export function MatchArena({
                           <Silhouette />
                         )}
                       </div>
+                      {claim.pending && (
+                        <span className="tok-spin" aria-label="Validando">
+                          <Spinner />
+                        </span>
+                      )}
                     </div>
                     <span className="nm">{claim.playerName}</span>
                   </div>
@@ -770,7 +819,8 @@ function PlayerSearch({
   nationName,
   disabled,
   onSubmit,
-  onReject,
+  onValidating,
+  onResolve,
   onCellGone,
 }: {
   localIndex: LocalPlayer[];
@@ -780,8 +830,10 @@ function PlayerSearch({
   disabled: boolean;
   /** Place the pick (optimistically) and validate; resolves with the result. */
   onSubmit: (cellId: string, player: PlayerHit) => Promise<ClaimResult>;
-  /** Surface a rejection toast explaining WHY the pick didn't count. */
-  onReject: (msg: string) => void;
+  /** Open a "validating…" notice for this pick; returns its id. */
+  onValidating: (playerName: string) => number;
+  /** Morph that notice into the result (valid, or WHY it failed). */
+  onResolve: (id: number, msg: string, kind: ToastKind) => void;
   /** Drop the selection (Escape on an empty query). */
   onCellGone: () => void;
 }) {
@@ -881,20 +933,29 @@ function PlayerSearch({
     submittingRef.current = true;
     setSubmitting(true);
     setError(false);
+    // Announce the validation; the token shows its spinner meanwhile.
+    const toastId = onValidating(player.name);
     const res = await onSubmit(cellId, player);
     submittingRef.current = false;
     setSubmitting(false);
-    if (res.ok || res.code === "CELL_TAKEN" || res.code === "ENDED") {
-      // Fresh search for the next cell (the parent cleared/kept the selection).
+    if (res.ok) {
+      onResolve(toastId, `✓ ${player.name} es válido`, "success");
+      // Fresh search for the next cell (the parent cleared the selection).
       seqRef.current++;
       setQuery("");
       setHits([]);
       setHighlight(0);
-      if (!res.ok) onReject(rejectMessage(res.code, player));
       return;
     }
-    // Wrong guess: explain it, shake, keep the query for an instant retry.
-    onReject(rejectMessage(res.code, player));
+    onResolve(toastId, rejectMessage(res.code, player), "error");
+    if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
+      seqRef.current++;
+      setQuery("");
+      setHits([]);
+      setHighlight(0);
+      return;
+    }
+    // Wrong guess: shake, keep the query for an instant retry.
     setError(true);
     inputRef.current?.focus();
   };
