@@ -942,24 +942,18 @@ function PlayerSearch({
     const res = await onSubmit(cellId, player);
     submittingRef.current = false;
     setSubmitting(false);
+    // Either way the search field is emptied — ready for the next pick.
+    seqRef.current++;
+    setQuery("");
+    setHits([]);
+    setHighlight(0);
     if (res.ok) {
       onResolve(toastId, `✓ ${player.name} es válido`, "success");
-      // Fresh search for the next cell (the parent cleared the selection).
-      seqRef.current++;
-      setQuery("");
-      setHits([]);
-      setHighlight(0);
       return;
     }
     onResolve(toastId, rejectMessage(res.code, player), "error");
-    if (res.code === "CELL_TAKEN" || res.code === "ENDED") {
-      seqRef.current++;
-      setQuery("");
-      setHits([]);
-      setHighlight(0);
-      return;
-    }
-    // Wrong guess: shake, keep the query for an instant retry.
+    if (res.code === "CELL_TAKEN" || res.code === "ENDED") return;
+    // Wrong guess: clear the field, shake, keep the cell selected to retry.
     setError(true);
     inputRef.current?.focus();
   };
