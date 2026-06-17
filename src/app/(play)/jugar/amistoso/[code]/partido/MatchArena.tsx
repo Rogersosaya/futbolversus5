@@ -600,7 +600,8 @@ export function MatchArena({
         <div className="gscore">
           <ScoreTeam player={me} theme={meTheme} />
           <div className="gs-num" style={sideStyle(meTheme)}>
-            <b>{game.myScore}</b>
+            {/* key remounts the digit only when MY score changes → it pops */}
+            <b key={game.myScore}>{game.myScore}</b>
           </div>
           <div className="gs-mid">
             <span
@@ -614,7 +615,7 @@ export function MatchArena({
             </span>
           </div>
           <div className="gs-num" style={sideStyle(rivalTheme)}>
-            <b>{game.rivalScore}</b>
+            <b key={game.rivalScore}>{game.rivalScore}</b>
           </div>
           <ScoreTeam player={rival} theme={rivalTheme} away />
         </div>

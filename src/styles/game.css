@@ -37,7 +37,10 @@
    A faint darker fill groups the score+clock+score cluster in the center. */
 .gs-num{display:flex;align-items:center;justify-content:center;position:relative;background:rgba(0,0,0,.18)}
 .gs-num b{font-family:var(--font-u);font-weight:700;font-size:50px;line-height:1;font-variant-numeric:tabular-nums;
-  color:#fff;text-shadow:0 0 24px var(--own-glow,transparent)}
+  color:#fff;text-shadow:0 0 24px var(--own-glow,transparent);
+  /* the digit is keyed by its value, so this fires only when the score changes */
+  animation:gsPop .55s cubic-bezier(.18,.9,.28,1.5) both}
+@keyframes gsPop{0%{transform:scale(.4);opacity:0}45%{transform:scale(1.35);opacity:1}70%{transform:scale(.92)}100%{transform:scale(1)}}
 .gs-num::after{content:"";position:absolute;left:16px;right:16px;bottom:11px;height:3px;border-radius:3px;
   background:var(--ring,var(--own,transparent));box-shadow:0 0 10px var(--own-glow,transparent)}
 /* center clock track, framed by hairline dividers and anchored a touch darker */
