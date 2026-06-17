@@ -283,6 +283,9 @@ export function MatchArena({
     return m;
   }, [game.claims, pendingClaims]);
   const penalized = game.myPenaltyUntil != null && game.myPenaltyUntil > nowS;
+  /** A pick is being validated on the server — lock the board until it resolves
+   * so the user can't jump to another cell mid-validation. */
+  const validating = pendingClaims.size > 0;
 
   // Selection only exists while actually playable — derived, so a penalty or
   // the final whistle retires it without effect-driven state juggling.
@@ -423,7 +426,8 @@ export function MatchArena({
   };
 
   const onCellClick = (cellId: string) => {
-    if (phase !== "playing" || penalized || claimsByCell.has(cellId)) return;
+    if (phase !== "playing" || penalized || validating || claimsByCell.has(cellId))
+      return;
     setSelectedCell((cur) => (cur === cellId ? null : cellId));
   };
 
@@ -660,7 +664,7 @@ export function MatchArena({
               cellId={selectedCell}
               posLabel={selectedPos}
               nationName={game.myNation.name}
-              disabled={phase !== "playing" || penalized}
+              disabled={phase !== "playing" || penalized || validating}
               onSubmit={submitClaim}
               onValidating={(name) => pushToast(`Validando a ${name}…`, "loading")}
               onResolve={resolveToast}
@@ -669,7 +673,7 @@ export function MatchArena({
 
             <button
               className="gc-change"
-              disabled={phase !== "playing" || penalized}
+              disabled={phase !== "playing" || penalized || validating}
               onClick={onChangeNation}
             >
               <span className="cc-t">
@@ -739,7 +743,7 @@ export function MatchArena({
                   </div>
                 );
               }
-              const selectable = phase === "playing" && !penalized;
+              const selectable = phase === "playing" && !penalized && !validating;
               const sel = cell.id === selectedCell;
               return (
                 <button
