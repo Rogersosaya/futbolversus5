@@ -16,12 +16,11 @@ import { BOARD_CELLS } from "@/data/gameboard";
 import {
   CLAIM_GRACE_MS,
   COUNTDOWN_MS,
-  DEFAULT_TOP,
-  DIFFICULTY_TOP,
   PENALTY_MS,
   POS_MAIN_POSITIONS,
   isLeadUnreachable,
 } from "@/data/match-game";
+import { nationDeckTop } from "@/data/game-difficulties";
 import type { MatchRoom, Prisma } from "@/generated/prisma/client";
 
 const CELL_BY_ID = new Map(BOARD_CELLS.map((c) => [c.id, c]));
@@ -247,7 +246,7 @@ async function ensureNationCycle(room: MatchRoom): Promise<MatchRoom> {
 /** Top-N FIFA-ranking national team ids, Fisher–Yates shuffled. Both players
  * walk this exact order, so it's built once per match (at promotion). */
 export async function buildNationCycle(difficulty: string | null): Promise<number[]> {
-  const top = (difficulty && DIFFICULTY_TOP[difficulty]) || DEFAULT_TOP;
+  const top = nationDeckTop(difficulty);
   const teams = await prisma.nationalTeam.findMany({
     where: { fifaRanking: { not: null, lte: top } },
     orderBy: { fifaRanking: "asc" },

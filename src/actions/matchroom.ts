@@ -23,6 +23,7 @@ export interface RoomSnapshot {
   code: string;
   status: MatchRoomStatus;
   difficulty: string | null;
+  gameId: number | null;
   gameName: string | null;
   hostId: string;
   guestId: string | null;
@@ -190,6 +191,7 @@ const toSnapshot = (room: MatchRoom, gameName: string | null): RoomSnapshot => (
   code: room.code,
   status: room.status,
   difficulty: room.difficulty,
+  gameId: room.gameId,
   gameName,
   hostId: room.hostId,
   guestId: room.guestId,

@@ -2,7 +2,7 @@
 // Components — NOT a "use server" file (trusted userId params are fine here).
 import { prisma } from "@/lib/prisma";
 import { toCards } from "@/actions/friends";
-import { DIFFICULTY_LABELS } from "@/data/match-game";
+import { difficultyLabel } from "@/data/game-difficulties";
 import type { HistoryEntry } from "@/data/history";
 
 /**
@@ -38,7 +38,7 @@ export async function getMatchHistory(userId: string): Promise<HistoryEntry[]> {
     const rival = rivalId ? rivalById.get(rivalId) : undefined;
     const myScore = room.claims.filter((c) => c.claimedBy === userId).length;
     const rivalScore = room.claims.length - myScore;
-    const difficulty = room.difficulty ? DIFFICULTY_LABELS[room.difficulty] ?? room.difficulty : null;
+    const difficulty = difficultyLabel(room.gameId, room.difficulty);
 
     return {
       id: room.id,

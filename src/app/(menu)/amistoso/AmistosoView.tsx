@@ -1,20 +1,89 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Icon } from "@/components/svg";
 import { MiniGameModal } from "@/components/MiniGameModal";
 import { createFriendlyRoom } from "@/app/actions/matchroom";
-import { DIFFICULTY_LABELS } from "@/data/match-game";
+import { getDifficulty, type GameDifficulty } from "@/data/game-difficulties";
 import type { Game } from "@/generated/prisma/client";
 
 /** Host-selectable match durations (seconds); 0 = no time limit. */
 const DURATION_CHOICES: { value: number; label: string }[] = [
-  { value: 60, label: "RÁPIDO · 60 s" },
-  { value: 120, label: "CLÁSICO · 120 s" },
-  { value: 240, label: "EXTENDIDO · 240 s" },
+  { value: 60, label: "60 SEGUNDOS" },
+  { value: 120, label: "120 SEGUNDOS" },
+  { value: 240, label: "240 SEGUNDOS" },
   { value: 0, label: "SIN LÍMITE" },
 ];
+
+/** One difficulty option: a selectable row plus an info icon that reveals the
+ * difficulty's rules in a floating tooltip (on hover/focus and on tap). */
+function DifficultyOption({
+  info,
+  selected,
+  onSelect,
+}: {
+  info: GameDifficulty;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const helpRef = useRef<HTMLSpanElement>(null);
+
+  // Close a tapped-open tooltip when interacting elsewhere (touch devices,
+  // where there is no mouseleave to dismiss it).
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (!helpRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+
+  return (
+    <div
+      className={`lvl${selected ? " on" : ""}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <span className="dot" />
+      <span className="ln">{info.label}</span>
+      <span
+        ref={helpRef}
+        className="lvl-help"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <button
+          type="button"
+          className="lvl-i"
+          aria-label={`Cómo funciona ${info.label}`}
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+        >
+          <Icon id="info" />
+        </button>
+        <span className="lvl-tip" role="tooltip" hidden={!open}>
+          {info.description}
+        </span>
+      </span>
+    </div>
+  );
+}
 
 export function AmistosoView({ games }: { games: Game[] }) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -80,16 +149,18 @@ export function AmistosoView({ games }: { games: Game[] }) {
                 <div>
                   <div className="lvl-label">DIFICULTAD</div>
                   <div className="lvl-opts" style={{ marginTop: 12 }}>
-                    {game.availableDifficulties.map((d) => (
-                      <button
-                        key={d}
-                        className={`lvl${difficulty === d ? " on" : ""}`}
-                        onClick={() => setDifficulty(d)}
-                      >
-                        <span className="dot" />
-                        <span className="ln">{DIFFICULTY_LABELS[d] ?? d}</span>
-                      </button>
-                    ))}
+                    {game.availableDifficulties.map((d) => {
+                      const info =
+                        getDifficulty(game.id, d) ?? { key: d, label: d, description: "" };
+                      return (
+                        <DifficultyOption
+                          key={d}
+                          info={info}
+                          selected={difficulty === d}
+                          onSelect={() => setDifficulty(d)}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

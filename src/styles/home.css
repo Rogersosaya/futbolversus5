@@ -140,6 +140,26 @@
 .lvl:hover{border-color:var(--line-strong)}
 .lvl.on{background:linear-gradient(90deg,rgba(200,16,46,.18),transparent);border-color:rgba(200,16,46,.55)}
 .lvl.on .ln{color:#fff}
+/* info icon + floating description tooltip on each difficulty */
+.lvl-help{position:relative;display:inline-flex;align-items:center;flex:0 0 auto}
+.lvl-i{display:grid;place-items:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;
+  background:transparent;color:var(--txt-3);cursor:help;transition:color .15s,background .15s}
+.lvl-i svg{width:16px;height:16px}
+.lvl-i:hover,.lvl-i:focus-visible{color:#fff;background:rgba(255,255,255,.08)}
+.lvl-tip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:max-content;max-width:230px;
+  padding:10px 12px;border-radius:9px;border:1px solid var(--line-strong);background:var(--bg-2);
+  color:var(--txt-2);font-family:var(--font-u);font-weight:400;font-size:13px;line-height:1.45;letter-spacing:0;
+  text-transform:none;text-align:left;white-space:normal;box-shadow:0 14px 34px rgba(0,0,0,.55);
+  z-index:30;pointer-events:none;animation:lvlTip .14s ease}
+.lvl-tip[hidden]{display:none}
+.lvl-tip::after{content:"";position:absolute;top:100%;left:50%;margin-top:-5px;width:9px;height:9px;
+  transform:translateX(-50%) rotate(45deg);background:var(--bg-2);border-right:1px solid var(--line-strong);
+  border-bottom:1px solid var(--line-strong)}
+@keyframes lvlTip{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translate(-50%,0)}}
+/* keep the tooltip inside the panel for the edge columns of the 3-up grid */
+.mgm-panel .lvl-opts:has(:nth-child(3):last-child)>.lvl:last-child .lvl-tip{left:auto;right:-2px;transform:none;animation:lvlTipR .14s ease}
+.mgm-panel .lvl-opts:has(:nth-child(3):last-child)>.lvl:last-child .lvl-tip::after{left:auto;right:9px;transform:rotate(45deg)}
+@keyframes lvlTipR{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .mg-detail .dt-foot{margin-top:auto}
 .mg-detail .btn-play{width:100%;justify-content:center;height:58px;font-size:23px}
 .mg-empty{display:grid;place-items:center;color:var(--txt-4);font-family:var(--font-d);font-weight:600;font-size:18px;letter-spacing:.18em;text-align:center;padding:40px}

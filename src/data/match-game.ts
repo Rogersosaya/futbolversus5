@@ -17,20 +17,9 @@ export const CLAIM_GRACE_MS = 1_500;
 /** Goals from which a lead can become mathematically unreachable (22 cells). */
 export const EARLY_FINISH_MIN = 12;
 
-/** FIFA-ranking deck size per room difficulty (host's pick on /amistoso). */
-export const DIFFICULTY_TOP: Record<string, number> = {
-  "Fácil": 15, // Canterano
-  "Medio": 30, // Titular
-  "Difícil": 50, // Leyenda
-};
-export const DEFAULT_TOP = 30;
-
-/** Player-facing names of the stored difficulty values. */
-export const DIFFICULTY_LABELS: Record<string, string> = {
-  "Fácil": "Canterano",
-  "Medio": "Titular",
-  "Difícil": "Leyenda",
-};
+// Difficulty labels and the FIFA-ranking deck size per difficulty now live in
+// the per-game registry: see src/data/game-difficulties.ts (nationDeckTop,
+// difficultyLabel). Each game owns its own difficulties and rules there.
 
 /** Accepted players.main_position values per board cell label. */
 export const POS_MAIN_POSITIONS: Record<string, string[]> = {
